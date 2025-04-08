@@ -1,0 +1,109 @@
+body {
+  margin: 0;
+  font-family: 'Heebo', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  direction: rtl;
+  text-align: right;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+/* Reset direction for specific elements that should remain LTR */
+pre, code, kbd, samp {
+  direction: ltr;
+  text-align: left;
+}
+
+/* Fix input field direction for specific cases */
+input[type="email"],
+input[type="url"],
+input[type="number"],
+input[type="tel"] {
+  direction: ltr;
+}
+
+/* Ensure all text inputs have RTL support for Hebrew */
+input[type="text"],
+input[type="search"],
+input:not([type]),
+textarea,
+.MuiInputBase-input {
+  direction: rtl !important;
+  text-align: right !important;
+}
+
+/* Force RTL for all numeric content and IDs */
+[id], 
+[data-id], 
+p, span, div, h1, h2, h3, h4, h5, h6 {
+  text-align: right !important;
+  direction: rtl !important;
+}
+
+/* Force left-aligned widgets like dates to maintain RTL */
+.MuiCardContent-root > div:last-child {
+  text-align: right !important;
+  direction: rtl !important;
+  float: right;
+  width: 100%;
+}
+
+/* Ensure search inputs and text fields show placeholder text correctly */
+input::placeholder,
+textarea::placeholder,
+.MuiInputBase-input::placeholder {
+  text-align: right !important;
+  direction: rtl !important;
+}
+
+/* Fix React Strict Mode warning related to Material UI's findDOMNode */
+.MuiTouchRipple-root {
+  pointer-events: none;
+}
+
+/* Ensure proper text truncation in RTL */
+h1[dir="rtl"], h2[dir="rtl"], h3[dir="rtl"], h4[dir="rtl"], h5[dir="rtl"], h6[dir="rtl"],
+.MuiTypography-root[dir="rtl"], 
+.MuiCardHeader-title {
+  text-align: right;
+  direction: rtl;
+  unicode-bidi: plaintext;
+}
+
+/* Fix truncation for noWrap Typography */
+.MuiTypography-noWrap {
+  direction: rtl;
+  text-align: right;
+  unicode-bidi: plaintext;
+  text-overflow: ellipsis;
+}
+
+/* Ensure chip labels are centered */
+.MuiChip-label {
+  text-align: center !important;
+  justify-content: center !important;
+  display: flex !important;
+  align-items: center !important;
+  width: 100% !important;
+  padding: 0 8px !important;
+  margin: 0 auto !important;
+}
+
+/* Fix tabs display in RTL mode */
+.MuiTabs-root {
+  direction: rtl !important;
+}
+
+.MuiTabs-flexContainer {
+  flex-direction: row !important;
+}
+
+.MuiTabs-indicator {
+  transition: right 300ms cubic-bezier(0.4, 0, 0.2, 1) 0ms, width 300ms cubic-bezier(0.4, 0, 0.2, 1) 0ms !important;
+}
