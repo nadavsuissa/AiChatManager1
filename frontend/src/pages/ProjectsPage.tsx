@@ -44,6 +44,7 @@ import {
 import MainLayout from '../layouts/MainLayout';
 import { getAllProjects } from '../services/api';
 import { Project } from '../types';
+import { useAuth } from '../hooks/useAuth';
 
 // Fix for MUI v5 Grid component with TypeScript
 interface StyledGridProps extends GridProps {
@@ -104,6 +105,8 @@ const ProjectsPage: React.FC = () => {
   const [sortMenuAnchor, setSortMenuAnchor] = useState<null | HTMLElement>(null);
   const [statusTab, setStatusTab] = useState<string | null>(null);
 
+  const { currentUser, loading: authLoading } = useAuth();
+
   // Define fetchProjects using useCallback to memoize it
   const fetchProjects = useCallback(async () => {
     setLoading(true);
@@ -130,10 +133,12 @@ const ProjectsPage: React.FC = () => {
     }
   }, [filters.status, filters.clientId, filters.search]);
 
-  // Fetch projects
+  // Fetch projects only when auth is loaded and user exists
   useEffect(() => {
-    fetchProjects();
-  }, [fetchProjects]);
+    if (!authLoading && currentUser) {
+      fetchProjects();
+    }
+  }, [fetchProjects, authLoading, currentUser]);
 
   // Handle search input
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -227,6 +232,37 @@ const ProjectsPage: React.FC = () => {
       }
     });
   }, [projects, sortOption]);
+
+  // Show loading skeleton or message while auth is loading
+  if (authLoading) {
+    return (
+      <MainLayout>
+        <Container maxWidth="xl" sx={{ mt: 4, mb: 4, direction: 'rtl', textAlign: 'right' }}>
+          <Typography variant="h4" gutterBottom>פרויקטים</Typography>
+          <Skeleton variant="rectangular" width="100%" height={60} sx={{ mb: 2 }} />
+          <Grid container spacing={3}>
+            {[...Array(6)].map((_, index) => (
+              <Grid item xs={12} sm={6} md={4} key={index}>
+                <Skeleton variant="rectangular" width="100%" height={180} />
+              </Grid>
+            ))}
+          </Grid>
+        </Container>
+      </MainLayout>
+    );
+  }
+
+  // Handle case where user is not logged in (should be handled by routing ideally)
+  if (!currentUser) {
+     return (
+      <MainLayout>
+        <Container maxWidth="xl" sx={{ mt: 4, mb: 4, direction: 'rtl', textAlign: 'center' }}>
+          <Typography variant="h6">יש להתחבר על מנת לראות את הפרויקטים.</Typography>
+          {/* Optionally add a login button */}
+        </Container>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
