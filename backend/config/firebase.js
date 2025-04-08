@@ -1,54 +1,55 @@
 const admin = require('firebase-admin');
 const dotenv = require('dotenv');
 const path = require('path');
-const fs = require('fs');
 
 dotenv.config();
 
-// Get service account path from environment variables or use default path
-const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH 
-  ? path.resolve(process.env.FIREBASE_SERVICE_ACCOUNT_PATH)
-  : path.join(process.cwd(), '..', 'aichatmanager-d2999-firebase-adminsdk-fbsvc-96883bb483.json');
+// Get service account JSON string from environment variables
+const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
 
-// Check if service account file exists
-if (!fs.existsSync(serviceAccountPath)) {
-  console.error(`Service account file not found at: ${serviceAccountPath}`);
-  console.warn('Falling back to mock implementation for development');
-  
-  // Initialize with minimal config for development
+// Check if service account JSON is provided in environment variables
+if (!serviceAccountJson) {
+  console.error('Firebase service account JSON not found in environment variables (FIREBASE_SERVICE_ACCOUNT).');
+  console.warn('Falling back to mock implementation for development/testing.');
+
+  // Initialize with minimal config for development (or if you have a specific mock setup)
   admin.initializeApp({
     projectId: process.env.FIREBASE_PROJECT_ID,
-    databaseURL: `https://${process.env.FIREBASE_PROJECT_ID}.firebaseio.com`
+    // You might need a databaseURL or other minimal config here depending on mockFirebase
+    // databaseURL: `https://${process.env.FIREBASE_PROJECT_ID}.firebaseio.com`
   });
-  
+
   // Create mock implementations for development
   mockFirebase();
 } else {
-  // Initialize with service account for production
+  // Initialize with service account JSON from environment variable
   try {
-    const serviceAccount = require(serviceAccountPath);
-    
+    // Parse the JSON string from the environment variable
+    const serviceAccount = JSON.parse(serviceAccountJson);
+
     admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount)
+      credential: admin.credential.cert(serviceAccount),
+      // Add projectId if needed, though cert usually handles it
+      projectId: process.env.FIREBASE_PROJECT_ID
     });
-    
-    console.log('Firebase initialized with service account credentials');
-    
+
+    console.log('Firebase initialized with service account credentials from environment variable');
+
     // Use real Firebase services
     const db = admin.firestore();
     const storage = admin.storage();
-    
+
     module.exports = { admin, db, storage };
   } catch (error) {
-    console.error('Error initializing Firebase with service account:', error);
+    console.error('Error parsing service account JSON or initializing Firebase:', error);
     console.warn('Falling back to mock implementation');
-    
+
     // Initialize with minimal config
     admin.initializeApp({
       projectId: process.env.FIREBASE_PROJECT_ID,
-      databaseURL: `https://${process.env.FIREBASE_PROJECT_ID}.firebaseio.com`
+      // databaseURL: `https://${process.env.FIREBASE_PROJECT_ID}.firebaseio.com`
     });
-    
+
     // Create mock implementations
     mockFirebase();
   }
