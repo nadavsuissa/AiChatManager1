@@ -20,12 +20,24 @@ api.interceptors.request.use(
     const auth = getAuth();
     const user = auth.currentUser;
     
+    console.log('API Request to:', config.url);
+    console.log('Auth state:', user ? 'User authenticated' : 'No user');
+    
     if (user) {
-      const token = await user.getIdToken();
-      // Add token to headers if available
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+      try {
+        const token = await user.getIdToken();
+        // Add token to headers if available
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+          console.log('Token added to request');
+        } else {
+          console.warn('Token is null despite user being authenticated');
+        }
+      } catch (error) {
+        console.error('Error getting auth token:', error);
       }
+    } else {
+      console.warn('No current user found for authentication');
     }
     
     return config;

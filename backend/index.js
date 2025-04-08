@@ -17,7 +17,7 @@ const PORT = process.env.PORT || 5000;
 // Configure CORS with specific options
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://aichatmanager-d2999.web.app', 'https://aichatmanager-d2999.firebaseapp.com'] 
+    ? ['https://aichatmanager-d2999.web.app', 'https://aichatmanager-d2999.firebaseapp.com', 'https://ai-chat-manager1.vercel.app'] 
     : ['http://localhost:3000', 'http://localhost:3001'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],
