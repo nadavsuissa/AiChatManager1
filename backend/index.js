@@ -44,12 +44,15 @@ app.use('/api/tasks', taskRoutes);
 
 // Serve Frontend Static Files in Production
 if (process.env.NODE_ENV === 'production') {
-  // Serve static files from the React build folder
-  app.use(express.static(path.join(__dirname, '../frontend/build')));
+  const frontendBuildPath = path.join(__dirname, '../frontend/build');
 
-  // Handle client-side routing: serve index.html for any unknown paths
-  app.get('/*', (req, res) => {
-    res.sendFile(path.resolve(__dirname, '../frontend/build', 'index.html'));
+  // Serve static assets
+  app.use(express.static(frontendBuildPath));
+
+  // For all other GET requests, send back index.html
+  // This relies on React Router to handle the specific path on the client-side
+  app.get('*', (req, res) => {
+    res.sendFile(path.resolve(frontendBuildPath, 'index.html'));
   });
 } else {
   // Development-only routes (if any)
