@@ -133,12 +133,30 @@ const ProjectsPage: React.FC = () => {
     }
   }, [filters.status, filters.clientId, filters.search]);
 
+  // Handle search input
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const searchValue = e.target.value;
+    setFilters(prev => ({ ...prev, search: searchValue }));
+  };
+
   // Fetch projects only when auth is loaded and user exists
+  // Also handles debounced search with a single useEffect to avoid multiple API calls
   useEffect(() => {
     console.log('ProjectsPage useEffect Check:', { authLoading, currentUser });
+    
     if (!authLoading && currentUser) {
-      console.log('Auth loaded and user found, calling fetchProjects.');
-      fetchProjects();
+      if (filters.search) {
+        // Debounce search queries
+        const debounceTimer = setTimeout(() => {
+          console.log('Auth loaded and user found, calling fetchProjects with search.');
+          fetchProjects();
+        }, 500);
+        
+        return () => clearTimeout(debounceTimer);
+      } else {
+        console.log('Auth loaded and user found, calling fetchProjects.');
+        fetchProjects();
+      }
     } else if (!authLoading && !currentUser) {
       console.log('Auth loaded but no user found.');
       // Clear projects if user logs out while on the page
@@ -147,22 +165,7 @@ const ProjectsPage: React.FC = () => {
     } else {
       console.log('Auth is still loading...');
     }
-  }, [fetchProjects, authLoading, currentUser]);
-
-  // Handle search input
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const searchValue = e.target.value;
-    setFilters(prev => ({ ...prev, search: searchValue }));
-  };
-
-  // Delayed search to avoid too many API calls
-  useEffect(() => {
-    const debounceTimer = setTimeout(() => {
-      fetchProjects();
-    }, 500);
-
-    return () => clearTimeout(debounceTimer);
-  }, [filters.search, fetchProjects]);
+  }, [fetchProjects, authLoading, currentUser, filters.search]);
 
   // Filter menu handlers
   const handleFilterClick = (event: React.MouseEvent<HTMLElement>) => {
