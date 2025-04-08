@@ -72,7 +72,5 @@ function shutdown() {
   process.exit(0);
 }
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
-}); 
+// Export the app for Vercel
+module.exports = app; 
