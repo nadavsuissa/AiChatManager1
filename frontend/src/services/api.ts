@@ -2,15 +2,15 @@ import axios, { AxiosError, AxiosResponse } from 'axios';
 import { ApiResponse, Project, AssistantMessage, ProjectUser, ProjectFile, Task, TaskComment, SuggestedVisualizationsResponse } from '../types';
 import { getAuth } from 'firebase/auth';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+// const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api'; // Remove or comment out the old variable definition if it exists here
 
-// Create an axios instance with default configuration
+// Create an Axios instance
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: '/api', // Use the relative path for Vercel deployment
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 120000, // Increased timeout to 120 seconds (120000ms)
+  timeout: 120000, // Example timeout
 });
 
 // Add request interceptor for adding auth token
