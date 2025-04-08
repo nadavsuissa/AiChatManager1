@@ -17,14 +17,13 @@ const PORT = process.env.PORT || 5000;
 // Configure CORS with specific options
 const corsOptions = {
   // Adjust origin based on your Render frontend URL
-  origin:
-    process.env.NODE_ENV === "production"
-      ? "https://aichatmanager1.onrender.com/"
-      : ["http://localhost:3000", "http://localhost:3001"],
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  origin: process.env.NODE_ENV === 'production' 
+    ? 'https://aichatmanager1.onrender.com'
+    : ['http://localhost:3000', 'http://localhost:3001'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
-  optionsSuccessStatus: 200,
+  optionsSuccessStatus: 200
 };
 
 // Middleware
