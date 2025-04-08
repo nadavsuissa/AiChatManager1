@@ -135,8 +135,17 @@ const ProjectsPage: React.FC = () => {
 
   // Fetch projects only when auth is loaded and user exists
   useEffect(() => {
+    console.log('ProjectsPage useEffect Check:', { authLoading, currentUser });
     if (!authLoading && currentUser) {
+      console.log('Auth loaded and user found, calling fetchProjects.');
       fetchProjects();
+    } else if (!authLoading && !currentUser) {
+      console.log('Auth loaded but no user found.');
+      // Clear projects if user logs out while on the page
+      setProjects([]); 
+      setError(null); // Clear previous errors
+    } else {
+      console.log('Auth is still loading...');
     }
   }, [fetchProjects, authLoading, currentUser]);
 
