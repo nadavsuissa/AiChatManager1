@@ -16,8 +16,9 @@ const PORT = process.env.PORT || 5000;
 
 // Configure CORS with specific options
 const corsOptions = {
+  // Adjust origin based on your Render frontend URL
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://aichatmanager-d2999.web.app', 'https://aichatmanager-d2999.firebaseapp.com', 'https://ai-chat-manager1.vercel.app'] 
+    ? 'https://your-render-frontend-app-name.onrender.com' 
     : ['http://localhost:3000', 'http://localhost:3001'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -30,25 +31,37 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Request logging middleware
+// Request logging middleware (optional)
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} ${req.method} ${req.url}`);
   next();
 });
 
-// Routes
+// API Routes - MUST come before static serving
 app.use('/api/projects', projectRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/tasks', taskRoutes);
 
-app.get('/', (req, res) => {
-  res.json({ message: 'Welcome to the AiChatManager API', version: '1.0.0' });
-});
+// Serve Frontend Static Files in Production
+if (process.env.NODE_ENV === 'production') {
+  // Serve static files from the React build folder
+  app.use(express.static(path.join(__dirname, '../frontend/build')));
 
-// 404 route handler
-app.use((req, res, next) => {
-  res.status(404).json({ error: 'Route not found' });
-});
+  // Handle client-side routing: serve index.html for any unknown paths
+  app.get('*', (req, res) => {
+    res.sendFile(path.resolve(__dirname, '../frontend/build', 'index.html'));
+  });
+} else {
+  // Development-only routes (if any)
+  app.get('/', (req, res) => {
+    res.json({ message: 'Welcome to the AiChatManager API (Development Mode)', version: '1.0.0' });
+  });
+}
+
+// 404 route handler - This might not be reached if '*' handles it
+// app.use((req, res, next) => {
+//   res.status(404).json({ error: 'Route not found' });
+// });
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -72,5 +85,10 @@ function shutdown() {
   process.exit(0);
 }
 
-// Export the app for Vercel
-module.exports = app; 
+// Start the server
+app.listen(PORT, () => {
+  console.log(`Server listening on port ${PORT}`);
+});
+
+// Remove the module.exports = app; if it exists (it was for Vercel)
+// module.exports = app; 
