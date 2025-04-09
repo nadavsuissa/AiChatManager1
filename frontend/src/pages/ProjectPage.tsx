@@ -368,6 +368,16 @@ const ProjectPage: React.FC = () => {
   // Handle tab change
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
+    
+    // When switching to the chat tab, scroll to the bottom of messages
+    if (newValue === 0) {
+      // Use setTimeout to ensure the DOM has updated after the tab change
+      setTimeout(() => {
+        if (messagesEndRef.current) {
+          messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
+    }
   };
 
   // Refresh project data after user updates

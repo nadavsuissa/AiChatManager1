@@ -1147,71 +1147,164 @@ const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({ project, onProjectUpd
       <Dialog 
         open={taskDialogOpen} 
         onClose={handleCloseTaskDialog}
-        maxWidth="sm"
+        maxWidth="md"
         fullWidth
         sx={{
           '& .MuiDialog-paper': {
-            borderRadius: 2,
-            direction: 'rtl'
+            borderRadius: 3,
+            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.1)',
+            overflow: 'hidden',
+            direction: 'rtl',
+            background: theme => theme.palette.mode === 'dark' 
+              ? alpha(theme.palette.background.paper, 0.9) 
+              : theme.palette.background.paper,
+            backdropFilter: 'blur(10px)',
           }
         }}
       >
-        <DialogTitle sx={{ px: 3, py: 3, fontWeight: 500 }}>
-          {editingTaskId ? 'ערוך משימה' : 'הוסף משימה חדשה'}
-        </DialogTitle>
+        {/* Styled Header */}
+        <Box sx={{ 
+          p: 3,
+          background: theme => `linear-gradient(45deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
+          color: 'white',
+          display: 'flex',
+          alignItems: 'center',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)'
+        }}>
+          <Box sx={{ 
+            borderRadius: '50%', 
+            bgcolor: 'rgba(255, 255, 255, 0.2)', 
+            p: 1,
+            mr: 2,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            {editingTaskId ? <EditIcon fontSize="medium" /> : <AddIcon fontSize="medium" />}
+          </Box>
+          <Typography variant="h5" sx={{ fontWeight: 600, textShadow: '0 1px 2px rgba(0, 0, 0, 0.2)' }}>
+            {editingTaskId ? 'עריכת משימה' : 'הוספת משימה חדשה'}
+          </Typography>
+        </Box>
         
-        <DialogContent sx={{ px: 3, pb: 2 }}>
-          <Grid container spacing={2.5} sx={{ direction: 'rtl' }}>
+        <DialogContent sx={{ px: 4, py: 4, pb: 2 }}>
+          {error && (
+            <Alert 
+              severity="error" 
+              sx={{ 
+                mb: 3,
+                borderRadius: 2,
+                boxShadow: theme => `0 4px 12px ${alpha(theme.palette.error.main, 0.15)}`
+              }}
+            >
+              {error}
+            </Alert>
+          )}
+          
+          <Grid container spacing={3} sx={{ direction: 'rtl' }}>
+            {/* Section: Task Details */}
+            <Grid item xs={12}>
+              <Box sx={{ 
+                mb: 3, 
+                position: 'relative',
+                '&:after': {
+                  content: '""',
+                  position: 'absolute',
+                  bottom: -8,
+                  right: 0,
+                  width: 60,
+                  height: 3,
+                  backgroundColor: theme => theme.palette.primary.main,
+                  borderRadius: 3,
+                }
+              }}>
+                <Typography variant="h6" fontWeight={600} sx={{ display: 'flex', alignItems: 'center' }}>
+                  <TaskIcon sx={{ mr: 1, color: 'primary.main' }} />
+                  פרטי המשימה
+                </Typography>
+              </Box>
+            </Grid>
+            
             <Grid item xs={12}>
               <TextField
                 autoFocus
-                margin="dense"
-                label="כותרת משימה"
+                label="כותרת משימה *"
                 fullWidth
                 required
                 value={newTask.title}
                 onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
                 variant="outlined"
-                size="small"
                 error={!newTask.title && error?.includes('כותרת')}
                 helperText={!newTask.title && error?.includes('כותרת') ? 'כותרת המשימה נדרשת' : ''}
-                InputProps={{ style: { direction: 'rtl' } }}
-                sx={{ 
-                  mt: 1, 
-                  '& .MuiOutlinedInput-root': { 
-                    borderRadius: 1.5,
-                    fontSize: '0.95rem'
-                  },
-                  direction: 'rtl'
+                InputProps={{ 
+                  style: { direction: 'rtl' },
+                  sx: {
+                    borderRadius: 2,
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      boxShadow: theme => `0 0 0 2px ${alpha(theme.palette.primary.main, 0.1)}`,
+                    },
+                    '&.Mui-focused': {
+                      boxShadow: theme => `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
+                    }
+                  }
                 }}
+                sx={{ direction: 'rtl' }}
               />
             </Grid>
             
             <Grid item xs={12}>
               <TextField
-                margin="dense"
                 label="תיאור המשימה"
                 fullWidth
                 multiline
-                rows={3}
+                rows={4}
                 value={newTask.description}
                 onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
                 variant="outlined"
-                size="small"
-                InputProps={{ style: { direction: 'rtl' } }}
-                sx={{ 
-                  mt: 1, 
-                  '& .MuiOutlinedInput-root': { 
-                    borderRadius: 1.5,
-                    fontSize: '0.95rem'
-                  },
-                  direction: 'rtl'
+                InputProps={{ 
+                  style: { direction: 'rtl' },
+                  sx: {
+                    borderRadius: 2,
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      boxShadow: theme => `0 0 0 2px ${alpha(theme.palette.primary.main, 0.1)}`,
+                    },
+                    '&.Mui-focused': {
+                      boxShadow: theme => `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
+                    }
+                  }
                 }}
+                placeholder="הוסף פרטים על המשימה, הנחיות לביצוע או הערות חשובות..."
+                sx={{ direction: 'rtl' }}
               />
             </Grid>
             
+            {/* Section: Status and Priority */}
+            <Grid item xs={12}>
+              <Box sx={{ 
+                my: 2, 
+                position: 'relative',
+                '&:after': {
+                  content: '""',
+                  position: 'absolute',
+                  bottom: -8,
+                  right: 0,
+                  width: 60,
+                  height: 3,
+                  backgroundColor: theme => theme.palette.primary.main,
+                  borderRadius: 3,
+                }
+              }}>
+                <Typography variant="h6" fontWeight={600} sx={{ display: 'flex', alignItems: 'center' }}>
+                  <FlagOutlined sx={{ mr: 1, color: 'primary.main' }} />
+                  עדיפות וסטטוס
+                </Typography>
+              </Box>
+            </Grid>
+            
             <Grid item xs={12} sm={6}>
-              <FormControl fullWidth margin="dense" size="small" sx={{ mt: 1, direction: 'rtl' }}>
+              <FormControl fullWidth variant="outlined" sx={{ direction: 'rtl' }}>
                 <InputLabel id="task-status-label" sx={{ right: 14, left: 'auto' }}>סטטוס</InputLabel>
                 <Select
                   labelId="task-status-label"
@@ -1220,15 +1313,25 @@ const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({ project, onProjectUpd
                   label="סטטוס"
                   onChange={(e) => setNewTask({ ...newTask, status: e.target.value as TaskStatus })}
                   sx={{ 
-                    '& .MuiOutlinedInput-root': { borderRadius: 1.5 },
+                    borderRadius: 2,
                     fontSize: '0.95rem',
                     direction: 'rtl',
-                    textAlign: 'right'
+                    textAlign: 'right',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      boxShadow: theme => `0 0 0 2px ${alpha(theme.palette.primary.main, 0.1)}`,
+                    },
+                    '&.Mui-focused': {
+                      boxShadow: theme => `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
+                    }
                   }}
                   MenuProps={{ 
                     anchorOrigin: { vertical: 'bottom', horizontal: 'right' },
                     transformOrigin: { vertical: 'top', horizontal: 'right' },
-                    PaperProps: { style: { direction: 'rtl' } }
+                    PaperProps: { 
+                      style: { direction: 'rtl' },
+                      sx: { borderRadius: 2, mt: 0.5, boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }
+                    }
                   }}
                 >
                   <MenuItem value="pending">
@@ -1260,7 +1363,7 @@ const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({ project, onProjectUpd
             </Grid>
             
             <Grid item xs={12} sm={6}>
-              <FormControl fullWidth margin="dense" size="small" sx={{ mt: 1, direction: 'rtl' }}>
+              <FormControl fullWidth variant="outlined" sx={{ direction: 'rtl' }}>
                 <InputLabel id="task-priority-label" sx={{ right: 14, left: 'auto' }}>עדיפות</InputLabel>
                 <Select
                   labelId="task-priority-label"
@@ -1269,38 +1372,72 @@ const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({ project, onProjectUpd
                   label="עדיפות"
                   onChange={(e) => setNewTask({ ...newTask, priority: e.target.value as TaskPriority })}
                   sx={{ 
-                    '& .MuiOutlinedInput-root': { borderRadius: 1.5 },
+                    borderRadius: 2,
                     fontSize: '0.95rem',
                     direction: 'rtl',
-                    textAlign: 'right'
+                    textAlign: 'right',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      boxShadow: theme => `0 0 0 2px ${alpha(theme.palette.primary.main, 0.1)}`,
+                    },
+                    '&.Mui-focused': {
+                      boxShadow: theme => `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
+                    }
                   }}
                   MenuProps={{ 
                     anchorOrigin: { vertical: 'bottom', horizontal: 'right' },
                     transformOrigin: { vertical: 'top', horizontal: 'right' },
-                    PaperProps: { style: { direction: 'rtl' } }
+                    PaperProps: { 
+                      style: { direction: 'rtl' },
+                      sx: { borderRadius: 2, mt: 0.5, boxShadow: '0 10px 30px rgba(0,0,0,0.1)' } 
+                    }
                   }}
                 >
                   <MenuItem value="low">
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, direction: 'rtl' }}>
-                      {priorityConfig.low.icon}
+                      <Box sx={{ 
+                        width: 12, 
+                        height: 12, 
+                        borderRadius: '50%', 
+                        bgcolor: theme => theme.palette.success.main,
+                        mr: 1
+                      }} />
                       <span>{priorityConfig.low.label}</span>
                     </Box>
                   </MenuItem>
                   <MenuItem value="medium">
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, direction: 'rtl' }}>
-                      {priorityConfig.medium.icon}
+                      <Box sx={{ 
+                        width: 12, 
+                        height: 12, 
+                        borderRadius: '50%', 
+                        bgcolor: theme => theme.palette.info.main,
+                        mr: 1
+                      }} />
                       <span>{priorityConfig.medium.label}</span>
                     </Box>
                   </MenuItem>
                   <MenuItem value="high">
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, direction: 'rtl' }}>
-                      {priorityConfig.high.icon}
+                      <Box sx={{ 
+                        width: 12, 
+                        height: 12, 
+                        borderRadius: '50%', 
+                        bgcolor: theme => theme.palette.warning.main,
+                        mr: 1
+                      }} />
                       <span>{priorityConfig.high.label}</span>
                     </Box>
                   </MenuItem>
                   <MenuItem value="urgent">
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, direction: 'rtl' }}>
-                      {priorityConfig.urgent.icon}
+                      <Box sx={{ 
+                        width: 12, 
+                        height: 12, 
+                        borderRadius: '50%', 
+                        bgcolor: theme => theme.palette.error.main,
+                        mr: 1
+                      }} />
                       <span>{priorityConfig.urgent.label}</span>
                     </Box>
                   </MenuItem>
@@ -1308,8 +1445,31 @@ const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({ project, onProjectUpd
               </FormControl>
             </Grid>
             
+            {/* Section: Assignment and Date */}
+            <Grid item xs={12}>
+              <Box sx={{ 
+                my: 2, 
+                position: 'relative',
+                '&:after': {
+                  content: '""',
+                  position: 'absolute',
+                  bottom: -8,
+                  right: 0,
+                  width: 60,
+                  height: 3,
+                  backgroundColor: theme => theme.palette.primary.main,
+                  borderRadius: 3,
+                }
+              }}>
+                <Typography variant="h6" fontWeight={600} sx={{ display: 'flex', alignItems: 'center' }}>
+                  <PersonIcon sx={{ mr: 1, color: 'primary.main' }} />
+                  אחראי ומועד
+                </Typography>
+              </Box>
+            </Grid>
+            
             <Grid item xs={12} sm={6}>
-              <FormControl fullWidth margin="dense" size="small" sx={{ mt: 1, direction: 'rtl' }}>
+              <FormControl fullWidth variant="outlined" sx={{ direction: 'rtl' }}>
                 <InputLabel id="assignee-label" sx={{ right: 14, left: 'auto' }}>משויך ל</InputLabel>
                 <Select
                   labelId="assignee-label"
@@ -1318,18 +1478,36 @@ const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({ project, onProjectUpd
                   label="משויך ל"
                   onChange={(e) => setNewTask({ ...newTask, assignedTo: e.target.value || null })}
                   sx={{ 
-                    '& .MuiOutlinedInput-root': { borderRadius: 1.5 },
+                    borderRadius: 2,
                     fontSize: '0.95rem',
                     direction: 'rtl',
-                    textAlign: 'right'
+                    textAlign: 'right',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      boxShadow: theme => `0 0 0 2px ${alpha(theme.palette.primary.main, 0.1)}`,
+                    },
+                    '&.Mui-focused': {
+                      boxShadow: theme => `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
+                    }
                   }}
                   MenuProps={{ 
                     anchorOrigin: { vertical: 'bottom', horizontal: 'right' },
                     transformOrigin: { vertical: 'top', horizontal: 'right' },
-                    PaperProps: { style: { direction: 'rtl' } }
+                    PaperProps: { 
+                      style: { direction: 'rtl' },
+                      sx: { borderRadius: 2, mt: 0.5, boxShadow: '0 10px 30px rgba(0,0,0,0.1)' } 
+                    }
                   }}
                 >
-                  <MenuItem value="">לא משויך</MenuItem>
+                  <MenuItem value="">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, direction: 'rtl' }}>
+                      <Avatar sx={{ width: 24, height: 24, bgcolor: 'grey.400' }}>
+                        <PersonIcon sx={{ fontSize: 16 }} />
+                      </Avatar>
+                      <span>לא משויך</span>
+                    </Box>
+                  </MenuItem>
+                  <Divider sx={{ my: 1 }} />
                   {project.users.map(user => (
                     <MenuItem key={user.userId} value={user.userId}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, direction: 'rtl' }}>
@@ -1349,36 +1527,53 @@ const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({ project, onProjectUpd
             
             <Grid item xs={12} sm={6}>
               <TextField
-                margin="dense"
                 label="תאריך יעד"
                 type="date"
                 fullWidth
                 value={newTask.dueDate ? new Date(getTimestamp(newTask.dueDate)).toISOString().split('T')[0] : ''}
                 onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value ? new Date(e.target.value) : null })}
                 variant="outlined"
-                size="small"
                 InputLabelProps={{ shrink: true, style: { right: 0, left: 'auto' } }}
-                InputProps={{ style: { direction: 'rtl' } }}
-                sx={{ 
-                  mt: 1, 
-                  '& .MuiOutlinedInput-root': { 
-                    borderRadius: 1.5,
-                    fontSize: '0.95rem'
-                  },
-                  direction: 'rtl'
+                InputProps={{ 
+                  style: { direction: 'rtl' },
+                  sx: {
+                    borderRadius: 2,
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      boxShadow: theme => `0 0 0 2px ${alpha(theme.palette.primary.main, 0.1)}`,
+                    },
+                    '&.Mui-focused': {
+                      boxShadow: theme => `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
+                    }
+                  }
                 }}
+                sx={{ direction: 'rtl' }}
               />
             </Grid>
           </Grid>
         </DialogContent>
         
-        <DialogActions sx={{ px: 3, py: 3 }}>
+        <Box sx={{ 
+          p: 3,
+          bgcolor: alpha(theme.palette.background.default, 0.5),
+          borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+          display: 'flex',
+          justifyContent: 'flex-end',
+          gap: 2
+        }}>
           <Button 
             onClick={handleCloseTaskDialog} 
+            variant="outlined"
             sx={{ 
-              borderRadius: 6,
-              px: 2,
-              fontWeight: 500
+              borderRadius: 8,
+              px: 3,
+              py: 1,
+              fontWeight: 500,
+              borderColor: alpha(theme.palette.primary.main, 0.5),
+              '&:hover': {
+                borderColor: theme.palette.primary.main,
+                bgcolor: alpha(theme.palette.primary.main, 0.1),
+              }
             }}
           >
             ביטול
@@ -1388,20 +1583,23 @@ const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({ project, onProjectUpd
             variant="contained" 
             color="primary"
             disabled={loading || !newTask.title}
-            startIcon={loading ? <CircularProgress size={20} /> : null}
+            startIcon={loading ? <CircularProgress size={20} /> : (editingTaskId ? <EditIcon /> : <AddIcon />)}
             sx={{ 
-              borderRadius: 6,
-              px: 3,
-              boxShadow: 'none',
+              borderRadius: 8,
+              px: 4,
+              py: 1,
               fontWeight: 500,
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.12)',
+              transition: 'all 0.3s ease',
               '&:hover': {
-                boxShadow: theme.shadows[1]
+                transform: 'translateY(-2px)',
+                boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
               }
             }}
           >
-            {editingTaskId ? 'עדכן' : 'הוסף'}
+            {editingTaskId ? 'עדכן משימה' : 'צור משימה'}
           </Button>
-        </DialogActions>
+        </Box>
       </Dialog>
       
       {/* Success message snackbar */}
