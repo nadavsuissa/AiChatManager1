@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -20,6 +20,7 @@ import {
   Tab,
   Menu,
   MenuItem,
+  Tooltip,
 } from '@mui/material';
 import {
   Send as SendIcon,
@@ -30,6 +31,7 @@ import {
   FileCopy as FilesIcon,
   Assignment as TasksIcon,
   Analytics as AnalyticsIcon,
+  Refresh as RefreshIcon,
 } from '@mui/icons-material';
 import MainLayout from '../layouts/MainLayout';
 import { getProject, getProjectMessages, sendProjectMessage, updateProject, getSuggestedVisualizations } from '../services/api';
@@ -97,6 +99,7 @@ const ProjectPage: React.FC = () => {
   const [visualizations, setVisualizations] = useState<Visualization[] | null>(null);
   const [visualizationsLoading, setVisualizationsLoading] = useState(false);
   const [visualizationsError, setVisualizationsError] = useState<string | null>(null);
+  const [visualizationsLastFetched, setVisualizationsLastFetched] = useState<number | null>(null);
 
   // Load project data
   useEffect(() => {
@@ -152,34 +155,127 @@ const ProjectPage: React.FC = () => {
     }
   }, [messages]);
 
-  // Fetch visualizations when the analysis tab is active
-  useEffect(() => {
-    const fetchVisualizations = async () => {
-      if (activeTab === 2 && !visualizations && id && !visualizationsLoading) {
-        setVisualizationsLoading(true);
-        setVisualizationsError(null);
-        try {
-          const response = await getSuggestedVisualizations(id);
-          if (response.error) {
-            setVisualizationsError(response.error);
-            setVisualizations(null); // Clear any previous data on error
-          } else if (response.data) {
-            setVisualizations(response.data.visualizations);
-          } else {
-            setVisualizations([]); // Set to empty if no data but no error
-          }
-        } catch (err) {
-          console.error('Failed to fetch visualizations:', err);
-          setVisualizationsError('שגיאה בטעינת הניתוחים הגרפיים.');
-          setVisualizations(null);
-        } finally {
-          setVisualizationsLoading(false);
-        }
+  // Function to check if visualization cache is valid
+  const isVisualizationCacheValid = useCallback(() => {
+    if (!id) return false;
+    
+    try {
+      // Get visualization cache data from localStorage
+      const cacheKey = `visualizations_${id}`;
+      const cachedData = localStorage.getItem(cacheKey);
+      
+      if (!cachedData) return false;
+      
+      const cache = JSON.parse(cachedData);
+      const now = Date.now();
+      const cacheAge = now - cache.timestamp;
+      
+      // Cache is valid if less than 24 hours old
+      const twentyFourHours = 24 * 60 * 60 * 1000;
+      const isValid = cacheAge < twentyFourHours;
+      
+      if (isValid) {
+        console.log('Using cached visualizations, age:', Math.round(cacheAge / (60 * 60 * 1000)), 'hours');
+        return true;
+      } else {
+        console.log('Visualization cache expired:', Math.round(cacheAge / (60 * 60 * 1000)), 'hours old');
+        return false;
       }
-    };
-
-    fetchVisualizations();
-  }, [id, activeTab]);
+    } catch (err) {
+      console.error('Error checking visualization cache:', err);
+      return false;
+    }
+  }, [id]);
+  
+  // Function to load visualizations from cache
+  const loadVisualizationsFromCache = useCallback(() => {
+    if (!id) return null;
+    
+    try {
+      const cacheKey = `visualizations_${id}`;
+      const cachedData = localStorage.getItem(cacheKey);
+      
+      if (!cachedData) return null;
+      
+      const cache = JSON.parse(cachedData);
+      setVisualizationsLastFetched(cache.timestamp);
+      return cache.data;
+    } catch (err) {
+      console.error('Error loading visualizations from cache:', err);
+      return null;
+    }
+  }, [id]);
+  
+  // Function to save visualizations to cache
+  const saveVisualizationsToCache = useCallback((data: Visualization[]) => {
+    if (!id) return;
+    
+    try {
+      const cacheKey = `visualizations_${id}`;
+      const now = Date.now();
+      
+      const cacheData = {
+        timestamp: now,
+        data: data
+      };
+      
+      localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+      setVisualizationsLastFetched(now);
+      console.log('Visualizations saved to cache');
+    } catch (err) {
+      console.error('Error saving visualizations to cache:', err);
+    }
+  }, [id]);
+  
+  // Fetch visualizations function with caching
+  const fetchVisualizations = useCallback(async (forceRefresh = false) => {
+    if (!id) return;
+    
+    // If not forcing refresh and already loading, don't do anything
+    if (!forceRefresh && visualizationsLoading) return;
+    
+    // If not forcing refresh and cache is valid, load from cache
+    if (!forceRefresh && isVisualizationCacheValid()) {
+      const cachedData = loadVisualizationsFromCache();
+      if (cachedData) {
+        setVisualizations(cachedData);
+        return;
+      }
+    }
+    
+    // Otherwise fetch from API
+    setVisualizationsLoading(true);
+    setVisualizationsError(null);
+    
+    try {
+      const response = await getSuggestedVisualizations(id);
+      
+      if (response.error) {
+        setVisualizationsError(response.error);
+        setVisualizations(null);
+      } else if (response.data) {
+        setVisualizations(response.data.visualizations);
+        // Save to cache
+        saveVisualizationsToCache(response.data.visualizations);
+      } else {
+        setVisualizations([]);
+      }
+    } catch (err) {
+      console.error('Failed to fetch visualizations:', err);
+      setVisualizationsError('שגיאה בטעינת הניתוחים הגרפיים.');
+      setVisualizations(null);
+    } finally {
+      setVisualizationsLoading(false);
+    }
+  }, [id, visualizationsLoading, isVisualizationCacheValid, loadVisualizationsFromCache, saveVisualizationsToCache]);
+  
+  // Trigger visualization fetch when tab changes to analysis
+  useEffect(() => {
+    if (activeTab === 2) {
+      // Attempt to load from cache or fetch new data if needed
+      fetchVisualizations(false);
+    }
+  }, [activeTab, fetchVisualizations]);
 
   const handleSendMessage = async () => {
     if (!id || (!newMessage.trim() && selectedFileIds.length === 0)) return;
@@ -953,19 +1049,46 @@ const ProjectPage: React.FC = () => {
           {/* Empty Analysis Tab Panel */}
           <TabPanel value={activeTab} index={2}>
             <Box sx={{ p: { xs: 1, sm: 2 } }}>
-              {/* Content for ניתוח גרפי will go here */}
-              <Typography variant="h6" gutterBottom>ניתוח גרפי</Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6">ניתוח גרפי</Typography>
+                
+                {/* Last updated time and refresh button */}
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  {visualizationsLastFetched && (
+                    <Typography variant="caption" sx={{ mr: 1, color: 'text.secondary' }}>
+                      עודכן לאחרונה: {new Date(visualizationsLastFetched).toLocaleString('he-IL')}
+                    </Typography>
+                  )}
+                  <Tooltip title="רענן נתונים">
+                    <IconButton 
+                      onClick={() => fetchVisualizations(true)} 
+                      disabled={visualizationsLoading}
+                      size="small"
+                      sx={{ ml: 1 }}
+                    >
+                      {visualizationsLoading ? (
+                        <CircularProgress size={20} />
+                      ) : (
+                        <RefreshIcon />
+                      )}
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+              </Box>
+              
               {visualizationsLoading && (
                 <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}>
                   <CircularProgress />
                   <Typography sx={{ ml: 2 }}>טוען הצעות לתצוגה...</Typography>
                 </Box>
               )}
+              
               {visualizationsError && (
                 <Typography color="error" sx={{ my: 2 }}>
                   שגיאה: {visualizationsError}
                 </Typography>
               )}
+              
               {!visualizationsLoading && !visualizationsError && visualizations && (
                 <Box>
                   {visualizations.length === 0 ? (
