@@ -1155,7 +1155,7 @@ const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({ project, onProjectUpd
             boxShadow: '0 10px 40px rgba(0, 0, 0, 0.1)',
             overflow: 'hidden',
             direction: 'rtl',
-            background: theme => theme.palette.mode === 'dark' 
+            background: theme.palette.mode === 'dark' 
               ? alpha(theme.palette.background.paper, 0.9) 
               : theme.palette.background.paper,
             backdropFilter: 'blur(10px)',
@@ -1165,7 +1165,7 @@ const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({ project, onProjectUpd
         {/* Styled Header */}
         <Box sx={{ 
           p: 3,
-          background: theme => `linear-gradient(45deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
+          background: `linear-gradient(45deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
           color: 'white',
           display: 'flex',
           alignItems: 'center',
@@ -1194,7 +1194,7 @@ const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({ project, onProjectUpd
               sx={{ 
                 mb: 3,
                 borderRadius: 2,
-                boxShadow: theme => `0 4px 12px ${alpha(theme.palette.error.main, 0.15)}`
+                boxShadow: `0 4px 12px ${alpha(theme.palette.error.main, 0.15)}`
               }}
             >
               {error}
@@ -1214,7 +1214,7 @@ const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({ project, onProjectUpd
                   right: 0,
                   width: 60,
                   height: 3,
-                  backgroundColor: theme => theme.palette.primary.main,
+                  backgroundColor: theme.palette.primary.main,
                   borderRadius: 3,
                 }
               }}>
@@ -1242,10 +1242,10 @@ const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({ project, onProjectUpd
                     borderRadius: 2,
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: theme => `0 0 0 2px ${alpha(theme.palette.primary.main, 0.1)}`,
+                      boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.1)}`,
                     },
                     '&.Mui-focused': {
-                      boxShadow: theme => `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
+                      boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
                     }
                   }
                 }}
@@ -1268,10 +1268,10 @@ const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({ project, onProjectUpd
                     borderRadius: 2,
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: theme => `0 0 0 2px ${alpha(theme.palette.primary.main, 0.1)}`,
+                      boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.1)}`,
                     },
                     '&.Mui-focused': {
-                      boxShadow: theme => `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
+                      boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
                     }
                   }
                 }}
@@ -1292,7 +1292,7 @@ const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({ project, onProjectUpd
                   right: 0,
                   width: 60,
                   height: 3,
-                  backgroundColor: theme => theme.palette.primary.main,
+                  backgroundColor: theme.palette.primary.main,
                   borderRadius: 3,
                 }
               }}>
@@ -1319,10 +1319,10 @@ const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({ project, onProjectUpd
                     textAlign: 'right',
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: theme => `0 0 0 2px ${alpha(theme.palette.primary.main, 0.1)}`,
+                      boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.1)}`,
                     },
                     '&.Mui-focused': {
-                      boxShadow: theme => `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
+                      boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
                     }
                   }}
                   MenuProps={{ 
@@ -1378,10 +1378,10 @@ const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({ project, onProjectUpd
                     textAlign: 'right',
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: theme => `0 0 0 2px ${alpha(theme.palette.primary.main, 0.1)}`,
+                      boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.1)}`,
                     },
                     '&.Mui-focused': {
-                      boxShadow: theme => `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
+                      boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
                     }
                   }}
                   MenuProps={{ 
@@ -1399,7 +1399,7 @@ const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({ project, onProjectUpd
                         width: 12, 
                         height: 12, 
                         borderRadius: '50%', 
-                        bgcolor: theme => theme.palette.success.main,
+                        bgcolor: theme.palette.success.main,
                         mr: 1
                       }} />
                       <span>{priorityConfig.low.label}</span>
@@ -1411,7 +1411,7 @@ const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({ project, onProjectUpd
                         width: 12, 
                         height: 12, 
                         borderRadius: '50%', 
-                        bgcolor: theme => theme.palette.info.main,
+                        bgcolor: theme.palette.info.main,
                         mr: 1
                       }} />
                       <span>{priorityConfig.medium.label}</span>
@@ -1423,7 +1423,7 @@ const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({ project, onProjectUpd
                         width: 12, 
                         height: 12, 
                         borderRadius: '50%', 
-                        bgcolor: theme => theme.palette.warning.main,
+                        bgcolor: theme.palette.warning.main,
                         mr: 1
                       }} />
                       <span>{priorityConfig.high.label}</span>
@@ -1435,7 +1435,7 @@ const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({ project, onProjectUpd
                         width: 12, 
                         height: 12, 
                         borderRadius: '50%', 
-                        bgcolor: theme => theme.palette.error.main,
+                        bgcolor: theme.palette.error.main,
                         mr: 1
                       }} />
                       <span>{priorityConfig.urgent.label}</span>
@@ -1457,7 +1457,7 @@ const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({ project, onProjectUpd
                   right: 0,
                   width: 60,
                   height: 3,
-                  backgroundColor: theme => theme.palette.primary.main,
+                  backgroundColor: theme.palette.primary.main,
                   borderRadius: 3,
                 }
               }}>
@@ -1484,10 +1484,10 @@ const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({ project, onProjectUpd
                     textAlign: 'right',
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: theme => `0 0 0 2px ${alpha(theme.palette.primary.main, 0.1)}`,
+                      boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.1)}`,
                     },
                     '&.Mui-focused': {
-                      boxShadow: theme => `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
+                      boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
                     }
                   }}
                   MenuProps={{ 
@@ -1540,10 +1540,10 @@ const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({ project, onProjectUpd
                     borderRadius: 2,
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      boxShadow: theme => `0 0 0 2px ${alpha(theme.palette.primary.main, 0.1)}`,
+                      boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.1)}`,
                     },
                     '&.Mui-focused': {
-                      boxShadow: theme => `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
+                      boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
                     }
                   }
                 }}
