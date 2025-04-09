@@ -1297,7 +1297,7 @@ const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({ project, onProjectUpd
                 }
               }}>
                 <Typography variant="h6" fontWeight={600} sx={{ display: 'flex', alignItems: 'center' }}>
-                  <FlagOutlined sx={{ mr: 1, color: 'primary.main' }} />
+                  <LowPriorityIcon sx={{ mr: 1, color: 'primary.main' }} />
                   עדיפות וסטטוס
                 </Typography>
               </Box>
