@@ -67,7 +67,7 @@ async function createThread() {
 /**
  * Uploads a file to OpenAI for use with assistants
  * @param {Buffer} fileBuffer - The file buffer to upload 
- * @param {string} fileName - Name of the file
+ * @param {string} fileName - The correctly decoded name of the file
  * @returns {Promise<string>} - The file ID
  */
 async function uploadFile(fileBuffer, fileName) {
@@ -77,42 +77,38 @@ async function uploadFile(fileBuffer, fileName) {
       throw new Error('Invalid file buffer provided');
     }
     
-    // For Node.js, OpenAI SDK expects a buffer with file data property
-    // or a ReadStream from fs.createReadStream
+    // Ensure filename is a non-empty string
+    if (!fileName || typeof fileName !== 'string' || fileName.trim().length === 0) {
+      console.warn('Invalid or empty filename provided for upload, using default.');
+      fileName = 'uploaded_file'; // Provide a default fallback filename
+    }
+
+    console.log(`[uploadFile] Attempting to upload buffer directly for filename: "${fileName}"`);
     
-    // Create a temporary file from the buffer
-    const fs = require('fs');
-    const path = require('path');
-    const os = require('os');
-    const tempFilePath = path.join(os.tmpdir(), fileName);
-    
-    // Write the buffer to a temporary file
-    fs.writeFileSync(tempFilePath, fileBuffer);
-    
-    // Create a read stream from the temporary file
-    const fileStream = fs.createReadStream(tempFilePath);
-    
-    // Upload using the file stream
+    // *** Use direct buffer upload ***
+    // Avoid creating temporary files, pass the buffer and filename directly.
+    // This requires the openai SDK v4+ FileCreateParams structure.
     const file = await openai.files.create({
-      file: fileStream,
+      file: fileBuffer,     // Pass the buffer directly
+      filename: fileName,   // Pass the decoded filename explicitly
       purpose: "assistants",
     });
     
-    // Clean up the temporary file
-    try {
-      fs.unlinkSync(tempFilePath);
-    } catch (cleanupError) {
-      console.warn(`Failed to clean up temporary file: ${cleanupError.message}`);
-    }
+    // No temporary file cleanup needed anymore
     
     console.log(`Uploaded file "${fileName}" to OpenAI: ${file.id}`);
     return file.id;
   } catch (error) {
-    console.error('Error uploading file:', error.message);
+    console.error(`Error uploading file "${fileName}" to OpenAI:`, error.message);
     if (error.response) {
       console.error('OpenAI API Error:', error.response.data);
     }
-    throw new Error(`Failed to upload file to OpenAI: ${error.message}`);
+    // Add more specific error info if possible
+    let errorMessage = `Failed to upload file "${fileName}" to OpenAI`;
+    if (error.code) {
+      errorMessage += ` (Code: ${error.code})`;
+    }
+    throw new Error(`${errorMessage}: ${error.message}`);
   }
 }
 
