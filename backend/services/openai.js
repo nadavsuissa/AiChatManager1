@@ -93,7 +93,7 @@ async function uploadFile(fileBuffer, fileName) {
     }
 
     // Create a temporary file with a sanitized name that works on all filesystems
-    // but preserve the original decoded filename when sending to OpenAI
+    // but preserve the original filename encoding
     const fs = require('fs');
     const path = require('path');
     const os = require('os');
@@ -110,12 +110,12 @@ async function uploadFile(fileBuffer, fileName) {
     // Create a read stream from the temporary file
     const fileStream = fs.createReadStream(tempFilePath);
     
-    console.log(`[uploadFile] Uploading stream to OpenAI with filename "${fileName}"`);
+    console.log(`[uploadFile] Uploading stream to OpenAI (original filename: "${fileName}")`);
     
-    // Upload using the file stream but set the explicit filename
+    // Upload using the file stream without explicit filename parameter
+    // OpenAI API doesn't accept 'filename' parameter directly - it's determined from the stream
     const file = await openai.files.create({
       file: fileStream,
-      filename: fileName, // Explicitly set the proper decoded filename
       purpose: "assistants",
     });
     
