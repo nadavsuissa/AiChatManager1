@@ -211,26 +211,26 @@ async function sendMessage(threadId, assistantId, message, fileIds = [], project
         if (msg.content[0]?.type === 'text') {
           const textContent = msg.content[0].text;
           
-          // Remove citation processing logic
-          // let processedText = textContent.value;
-          // const citations = [];
-          
-          // textContent.annotations.forEach((annotation, index) => { ... });
-          
-          // Add RTL embedding for assistant messages (likely Hebrew)
+          // Start with the raw text value
           let finalContent = textContent.value;
-          if (msg.role === 'assistant') {
-            // ‫ = RTL embedding, ‬ = pop directional formatting
-            finalContent = `‫${textContent.value}‬`;
-            
-            // Explicitly remove the unwanted citation pattern
-            finalContent = finalContent.replace(/\(המידע מופיע במסמך "[^"]*"\)/g, '').trim();
+
+          // Remove the automatic 【...】 citations
+          // Regex: Matches 【 followed by any characters except 】, then 】
+          finalContent = finalContent.replace(/【[^】]*】/g, '').trim();
+
+          // Also remove the textual pattern from instructions, just in case
+          finalContent = finalContent.replace(/\\(המידע מופיע במסמך "[^"]*"\\)/g, '').trim();
+
+          // Add RTL embedding for assistant messages if it seems like Hebrew
+          // A simple check for Hebrew characters
+          if (/[\\u0590-\\u05FF]/.test(finalContent)) { 
+            finalContent = `‫${finalContent}‬`; // Add RTL embedding
           }
           
           return {
             id: msg.id,
-            content: finalContent, // Use original text value
-            citations: [], // Return empty citations array
+            content: finalContent, // Use the cleaned text
+            citations: [], // Always return empty citations array now
             createdAt: msg.created_at,
             role: msg.role
           };
@@ -284,34 +284,35 @@ async function getMessages(threadId) {
         id: msg.id,
         role: msg.role,
         createdAt: msg.created_at,
+        content: '', // Initialize content
+        citations: [] // Initialize citations
       };
       
       // Process content based on type
       if (msg.content[0]?.type === 'text') {
         const textContent = msg.content[0].text;
         
-        // Remove citation processing logic
-        // if (textContent.annotations && textContent.annotations.length > 0) { ... }
-        
-        // Add RTL embedding for assistant messages (likely Hebrew)
+        // Start with the raw text value
         let finalContent = textContent.value;
-        if (msg.role === 'assistant') {
-          // ‫ = RTL embedding, ‬ = pop directional formatting
-          finalContent = `‫${textContent.value}‬`;
-          
-          // Explicitly remove the unwanted citation pattern
-          finalContent = finalContent.replace(/\(המידע מופיע במסמך "[^"]*"\)/g, '').trim();
+
+        // Remove the automatic 【...】 citations
+        finalContent = finalContent.replace(/【[^】]*】/g, '').trim();
+
+        // Also remove the textual pattern from instructions
+        finalContent = finalContent.replace(/\\(המידע מופיע במסמך "[^"]*"\\)/g, '').trim();
+        
+        // Add RTL embedding for assistant messages if it seems like Hebrew
+        if (msg.role === 'assistant' && /[\\u0590-\\u05FF]/.test(finalContent)) {
+          finalContent = `‫${finalContent}‬`; // Add RTL embedding
         }
         
-        messageObj.content = finalContent; // Use original text value
-        messageObj.citations = []; // Return empty citations array
+        messageObj.content = finalContent; // Use the cleaned text
         
       } else {
         // Handle other content types if needed
         messageObj.content = msg.role === 'assistant' 
-          ? "\u202B[תוכן הודעה לא נתמך]\u202C" 
+          ? "‫[תוכן הודעה לא נתמך]‬" 
           : "[Unsupported content]";
-        messageObj.citations = [];
       }
       
       return messageObj;
