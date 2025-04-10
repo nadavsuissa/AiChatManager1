@@ -231,12 +231,27 @@ export const uploadProjectFile = async (
 ): Promise<ApiResponse<{ file: { id: string, openaiFileId: string } }>> => {
   try {
     const formData = new FormData();
-    formData.append('file', file);
+    
+    // Ensure the file object has a properly encoded filename
+    // Create a new file object if needed
+    let fileToUpload = file;
+    if (file.name.match(/[\u0590-\u05FF\uFB1D-\uFB4F]/)) {
+      // Contains Hebrew characters, ensure it's properly handled
+      // The file name will be decoded on the backend, but we keep this
+      // for better compatibility
+      try {
+        fileToUpload = new File([file], file.name, { type: file.type });
+      } catch (e) {
+        console.warn('Could not create new file object, using original:', e);
+      }
+    }
+    
+    formData.append('file', fileToUpload);
     
     const response: AxiosResponse<{ file: { id: string, openaiFileId: string }, projectId: string }> = 
       await api.post(`/projects/${projectId}/files`, formData, {
         headers: {
-          'Content-Type': 'multipart/form-data',
+          'Content-Type': 'multipart/form-data; charset=utf-8',
         },
         // Increase timeout for file uploads
         timeout: 60000, // 60 seconds

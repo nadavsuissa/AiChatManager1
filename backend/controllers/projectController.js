@@ -550,7 +550,10 @@ exports.uploadProjectFile = async (req, res) => {
     const { id } = req.params;
     const file = req.file;
     
-    console.log(`Uploading file to project ${id}: ${file?.originalname || 'unnamed'}, Size: ${file?.size || 0} bytes`);
+    // Fix for Hebrew filename encoding
+    const decodedFilename = decodeFileName(file?.originalname || 'unnamed');
+    
+    console.log(`Uploading file to project ${id}: ${decodedFilename}, Size: ${file?.size || 0} bytes`);
     
     if (!file) {
       return res.status(400).json({ error: 'No file uploaded' });
@@ -588,7 +591,7 @@ exports.uploadProjectFile = async (req, res) => {
       try {
         openaiFileId = await openaiService.uploadFile(
           file.buffer,
-          file.originalname
+          decodedFilename  // Use the decoded filename here
         );
         break; // If upload succeeds, exit the loop
       } catch (uploadError) {
@@ -618,7 +621,7 @@ exports.uploadProjectFile = async (req, res) => {
     // Create file record
     const fileRecord = {
       id: uuidv4(),
-      name: file.originalname,
+      name: decodedFilename,  // Use the decoded filename here
       type: file.mimetype,
       size: file.size,
       url: '', // Would normally store URL from Firebase Storage
@@ -654,6 +657,39 @@ exports.uploadProjectFile = async (req, res) => {
     res.status(500).json({ error: error.message || 'Failed to upload file' });
   }
 };
+
+/**
+ * Helper function to decode filenames with Hebrew characters
+ * This handles the encoding issues with non-Latin character sets
+ * @param {string} filename - The potentially encoded filename
+ * @returns {string} - The properly decoded filename
+ */
+function decodeFileName(filename) {
+  try {
+    // Check if the filename needs decoding
+    if (!filename || typeof filename !== 'string') {
+      return filename;
+    }
+    
+    // The pattern ×× often indicates mojibake from UTF-8 to Latin1
+    if (filename.includes('×')) {
+      // Try to decode using URI decoding which often fixes these issues
+      try {
+        // For filenames coming from form-data that might be percent-encoded
+        return decodeURIComponent(filename);
+      } catch (e) {
+        // If that fails, try another approach for mojibake correction
+        // Convert to Buffer and back with correct encoding
+        return Buffer.from(filename, 'binary').toString('utf8');
+      }
+    }
+    
+    return filename;
+  } catch (error) {
+    console.error('Error decoding filename:', error);
+    return filename; // Return original as fallback
+  }
+}
 
 /**
  * Get files attached to a project's assistant

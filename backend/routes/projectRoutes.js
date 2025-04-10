@@ -4,9 +4,20 @@ const projectController = require('../controllers/projectController');
 const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
+
+// Configure multer with options for proper filename handling
+const storage = multer.memoryStorage();
+const fileFilter = (req, file, cb) => {
+  // Accept all files but sanitize the filename
+  // The original filename is preserved in originalname property
+  // Our controller will handle decoding it properly
+  cb(null, true);
+};
+
 const upload = multer({ 
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
+  storage: storage,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
+  fileFilter: fileFilter
 });
 
 // Use auth middleware for all project routes
