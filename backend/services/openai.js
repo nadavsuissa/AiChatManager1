@@ -83,18 +83,48 @@ async function uploadFile(fileBuffer, fileName) {
       fileName = 'uploaded_file'; // Provide a default fallback filename
     }
 
-    console.log(`[uploadFile] Attempting to upload buffer directly for filename: "${fileName}"`);
+    console.log(`[uploadFile] Processing file "${fileName}" of size ${fileBuffer.length} bytes`);
     
-    // *** Use direct buffer upload ***
-    // Avoid creating temporary files, pass the buffer and filename directly.
-    // This requires the openai SDK v4+ FileCreateParams structure.
+    // Check file size before attempting to upload
+    // OpenAI has a limit of ~25MB for files
+    const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
+    if (fileBuffer.length > MAX_FILE_SIZE) {
+      throw new Error(`File size exceeds OpenAI's limit of ${MAX_FILE_SIZE / (1024 * 1024)}MB`);
+    }
+
+    // Create a temporary file with a sanitized name that works on all filesystems
+    // but preserve the original decoded filename when sending to OpenAI
+    const fs = require('fs');
+    const path = require('path');
+    const os = require('os');
+    const crypto = require('crypto');
+    
+    // Generate a safe temporary filename with random hash
+    const tempId = crypto.randomBytes(16).toString('hex');
+    const ext = path.extname(fileName) || '.tmp';
+    const tempFilePath = path.join(os.tmpdir(), `upload_${tempId}${ext}`);
+    
+    // Write the buffer to the temporary file
+    fs.writeFileSync(tempFilePath, fileBuffer);
+    
+    // Create a read stream from the temporary file
+    const fileStream = fs.createReadStream(tempFilePath);
+    
+    console.log(`[uploadFile] Uploading stream to OpenAI with filename "${fileName}"`);
+    
+    // Upload using the file stream but set the explicit filename
     const file = await openai.files.create({
-      file: fileBuffer,     // Pass the buffer directly
-      filename: fileName,   // Pass the decoded filename explicitly
+      file: fileStream,
+      filename: fileName, // Explicitly set the proper decoded filename
       purpose: "assistants",
     });
     
-    // No temporary file cleanup needed anymore
+    // Clean up the temporary file
+    try {
+      fs.unlinkSync(tempFilePath);
+    } catch (cleanupError) {
+      console.warn(`Failed to clean up temporary file: ${cleanupError.message}`);
+    }
     
     console.log(`Uploaded file "${fileName}" to OpenAI: ${file.id}`);
     return file.id;
