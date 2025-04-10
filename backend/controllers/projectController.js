@@ -659,36 +659,78 @@ exports.uploadProjectFile = async (req, res) => {
 };
 
 /**
- * Helper function to decode filenames with Hebrew characters
- * This handles the encoding issues with non-Latin character sets
- * @param {string} filename - The potentially encoded filename
- * @returns {string} - The properly decoded filename
+ * Helper function to decode filenames potentially mis-encoded by the browser/server.
+ * Prioritizes standard URI decoding and then attempts to correct specific mojibake patterns.
+ * @param {string} filename - The potentially encoded filename from multer's req.file.originalname
+ * @returns {string} - The properly decoded filename (hopefully UTF-8)
  */
 function decodeFileName(filename) {
-  try {
-    // Check if the filename needs decoding
-    if (!filename || typeof filename !== 'string') {
-      return filename;
-    }
-    
-    // The pattern ×× often indicates mojibake from UTF-8 to Latin1
-    if (filename.includes('×')) {
-      // Try to decode using URI decoding which often fixes these issues
-      try {
-        // For filenames coming from form-data that might be percent-encoded
-        return decodeURIComponent(filename);
-      } catch (e) {
-        // If that fails, try another approach for mojibake correction
-        // Convert to Buffer and back with correct encoding
-        return Buffer.from(filename, 'binary').toString('utf8');
-      }
-    }
-    
-    return filename;
-  } catch (error) {
-    console.error('Error decoding filename:', error);
-    return filename; // Return original as fallback
+  if (!filename || typeof filename !== 'string') {
+    return filename || '';
   }
+  console.log(`[decodeFileName] Original filename received: "${filename}"`);
+
+  let decoded = filename;
+
+  try {
+    // Step 1: Try standard URI decoding first.
+    // This handles UTF-8 characters percent-encoded by the browser (filename*).
+    let uriDecoded = filename;
+    try {
+       // Use a loop to handle potentially double-encoded scenarios, though unlikely needed
+       let tempDecoded = filename;
+       let maxDecodes = 3; // Prevent infinite loops
+       while (maxDecodes > 0 && tempDecoded.includes('%')) {
+         tempDecoded = decodeURIComponent(tempDecoded);
+         maxDecodes--;
+       }
+       uriDecoded = tempDecoded;
+       console.log(`[decodeFileName] After decodeURIComponent: "${uriDecoded}"`);
+    } catch (uriError) {
+       console.warn(`[decodeFileName] decodeURIComponent failed for "${filename}":`, uriError.message);
+       // If URI decoding fails, proceed with the original filename for mojibake check
+       uriDecoded = filename; 
+    }
+
+
+    // Step 2: Check if the URI-decoded result STILL looks like mojibake (UTF-8 misinterpreted as Latin1).
+    // Check for high-bit characters AND the '×' character as strong indicators.
+    const hasMojibakePattern = /[\\u0080-\\u00FF]/.test(uriDecoded) && uriDecoded.includes('×');
+
+    if (hasMojibakePattern) {
+      console.warn(`[decodeFileName] Mojibake pattern detected *after* URI decoding: "${uriDecoded}". Attempting Latin1 correction.`);
+      // If it still looks wrong, *now* apply the Latin1 -> UTF-8 buffer conversion.
+      try {
+        const buffer = Buffer.from(uriDecoded, 'latin1');
+        const corrected = buffer.toString('utf8');
+        console.log(`[decodeFileName] After Latin1 correction: "${corrected}"`);
+
+        // Basic sanity check: Does the corrected string contain likely Hebrew characters?
+        // This is imperfect but helps avoid returning garbage if the correction was wrong.
+        if (/[\\u0590-\\u05FF]/.test(corrected) || !/[\\uFFFD]/.test(corrected)) { // Check for Hebrew or absence of replacement char
+          decoded = corrected;
+        } else {
+          console.warn(`[decodeFileName] Latin1 correction resulted in suspicious string: "${corrected}". Using URI decoded version as fallback.`);
+          decoded = uriDecoded; // Stick with the URI decoded version if correction looks bad
+        }
+      } catch (bufferError) {
+         console.error(`[decodeFileName] Error during Buffer conversion for "${uriDecoded}":`, bufferError);
+         decoded = uriDecoded; // Fallback to URI decoded version on buffer error
+      }
+    } else {
+      // If no mojibake after URI decoding, assume it's correct.
+      decoded = uriDecoded;
+    }
+
+  } catch (error) {
+    // Catch any unexpected errors during the process
+    console.error(`[decodeFileName] Unexpected error during decoding process for "${filename}":`, error);
+    // Fallback to the original filename in case of unexpected errors
+    decoded = filename;
+  }
+
+  console.log(`[decodeFileName] Final decoded filename: "${decoded}"`);
+  return decoded;
 }
 
 /**

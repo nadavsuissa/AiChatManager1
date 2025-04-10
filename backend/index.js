@@ -31,19 +31,6 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Fix for international character encoding
-app.use((req, res, next) => {
-  // Set proper charset for responses
-  res.charset = 'utf-8';
-  
-  // Ensure Content-Type has charset specified
-  if (req.headers['content-type'] && !req.headers['content-type'].includes('charset')) {
-    req.headers['content-type'] = `${req.headers['content-type']}; charset=utf-8`;
-  }
-  
-  next();
-});
-
 // Request logging middleware (optional)
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} ${req.method} ${req.url}`);
