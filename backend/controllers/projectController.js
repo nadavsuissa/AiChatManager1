@@ -554,7 +554,12 @@ exports.uploadProjectFile = async (req, res) => {
     const { id } = req.params;
     const file = req.file;
     
-    // Log 1: Check filename immediately after multer processing
+    // Fix for multer UTF-8 filename issue (interprets as latin1)
+    if (file && file.originalname) {
+      file.originalname = Buffer.from(file.originalname, 'latin1').toString('utf8');
+    }
+    
+    // Log 1: Check filename immediately after multer processing (and potential fix)
     console.log(`[Upload Debug 1] Filename received by controller: ${file?.originalname}`);
     
     console.log(`Uploading file to project ${id}: ${file?.originalname || 'unnamed'}, Size: ${file?.size || 0} bytes`);
