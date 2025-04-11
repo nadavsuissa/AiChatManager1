@@ -72,15 +72,18 @@ async function createThread() {
  */
 async function uploadFile(fileBuffer, fileName) {
   try {
-    // Ensure we have a valid file buffer
-    if (!fileBuffer || !Buffer.isBuffer(fileBuffer)) {
-      throw new Error('Invalid file buffer provided');
+    // More strict validation of file buffer
+    if (!fileBuffer || !Buffer.isBuffer(fileBuffer) || fileBuffer.length === 0) {
+      throw new Error('Invalid or empty file buffer provided. Please ensure the file was properly selected and uploaded.');
     }
     
     // Ensure filename is a non-empty string
-    if (!fileName || typeof fileName !== 'string' || fileName.trim().length === 0) {
-      console.warn('Invalid or empty filename provided for upload, using default.');
-      fileName = 'uploaded_file'; // Provide a default fallback filename
+    if (!fileName || typeof fileName !== 'string' || fileName.trim() === '' || fileName === 'unnamed') {
+      console.warn('Invalid, empty or default filename provided, using a generated one.');
+      // Generate a more descriptive filename with timestamp and random identifier
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const randomId = Math.random().toString(36).substring(2, 8);
+      fileName = `upload_${timestamp}_${randomId}.bin`;
     }
 
     console.log(`[uploadFile] Processing file "${fileName}" of size ${fileBuffer.length} bytes`);
@@ -93,7 +96,6 @@ async function uploadFile(fileBuffer, fileName) {
     }
 
     // Create a temporary file with a sanitized name that works on all filesystems
-    // but preserve the original filename encoding
     const fs = require('fs');
     const path = require('path');
     const os = require('os');
@@ -101,7 +103,7 @@ async function uploadFile(fileBuffer, fileName) {
     
     // Generate a safe temporary filename with random hash
     const tempId = crypto.randomBytes(16).toString('hex');
-    const ext = path.extname(fileName) || '.tmp';
+    const ext = path.extname(fileName) || '.bin'; // Default to .bin if no extension
     const tempFilePath = path.join(os.tmpdir(), `upload_${tempId}${ext}`);
     
     // Write the buffer to the temporary file
@@ -110,10 +112,10 @@ async function uploadFile(fileBuffer, fileName) {
     // Create a read stream from the temporary file
     const fileStream = fs.createReadStream(tempFilePath);
     
-    console.log(`[uploadFile] Uploading stream to OpenAI (original filename: "${fileName}")`);
+    console.log(`[uploadFile] Uploading stream to OpenAI (size: ${fileBuffer.length} bytes)`);
     
-    // Upload using the file stream without explicit filename parameter
-    // OpenAI API doesn't accept 'filename' parameter directly - it's determined from the stream
+    // Upload using the file stream
+    // Note: OpenAI will use the basename of the file path as the filename
     const file = await openai.files.create({
       file: fileStream,
       purpose: "assistants",

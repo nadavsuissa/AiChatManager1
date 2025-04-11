@@ -230,15 +230,31 @@ export const uploadProjectFile = async (
   file: File
 ): Promise<ApiResponse<{ file: { id: string, openaiFileId: string } }>> => {
   try {
-    const formData = new FormData();
+    // Validate file before upload
+    if (!file || file.size === 0) {
+      console.error('Invalid file: File is empty or undefined');
+      return { error: 'קובץ לא תקין או ריק. אנא נסה שוב עם קובץ אחר.' };
+    }
+
+    // Log file details for debugging
+    console.log(`Uploading file: ${file.name}, Type: ${file.type}, Size: ${file.size} bytes`);
     
+    const formData = new FormData();
     formData.append('file', file);
     
     const response: AxiosResponse<{ file: { id: string, openaiFileId: string }, projectId: string }> = 
       await api.post(`/projects/${projectId}/files`, formData, {
         headers: {
+          // Don't manually set Content-Type for FormData - browser will set it automatically
+          // with proper boundary parameters
+          // Instead log what's being sent
         },
-        timeout: 60000,
+        // Enable request body logging for debugging
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
+          console.log(`Upload progress: ${percentCompleted}%`);
+        },
+        timeout: 60000, // 60 seconds
       });
     
     return { data: response.data };

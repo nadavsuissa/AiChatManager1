@@ -550,14 +550,27 @@ exports.uploadProjectFile = async (req, res) => {
     const { id } = req.params;
     const file = req.file;
     
-    // Fix for Hebrew filename encoding
-    const decodedFilename = decodeFileName(file?.originalname || 'unnamed');
-    
-    console.log(`Uploading file to project ${id}: ${decodedFilename}, Size: ${file?.size || 0} bytes`);
-    
+    // More robust file validation
     if (!file) {
-      return res.status(400).json({ error: 'No file uploaded' });
+      console.error('No file received in request');
+      return res.status(400).json({ error: 'No file uploaded. Please select a file to upload.' });
     }
+
+    if (!file.buffer || file.size === 0) {
+      console.error(`Received empty file: ${file.originalname}, Size: ${file.size} bytes`);
+      return res.status(400).json({ error: 'Empty file received. Please ensure the file has content.' });
+    }
+    
+    // Get the file extension for validation
+    const originalExt = file.originalname.split('.').pop()?.toLowerCase() || '';
+    if (!originalExt) {
+      console.warn('File has no extension, might be problematic for OpenAI processing');
+    }
+    
+    // Fix for Hebrew filename encoding
+    const decodedFilename = decodeFileName(file.originalname || 'unnamed');
+    
+    console.log(`Uploading file to project ${id}: ${decodedFilename}, Size: ${file.size} bytes, Type: ${file.mimetype}`);
     
     // Check file size limits
     const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB for safety (OpenAI limit is higher but we're being cautious)
@@ -587,12 +600,16 @@ exports.uploadProjectFile = async (req, res) => {
     let retries = 0;
     const MAX_RETRIES = 3;
     
+    // Add additional logging for debugging
+    console.log(`Starting upload to OpenAI for file: ${decodedFilename}, Size: ${file.size} bytes`);
+    
     while (retries < MAX_RETRIES) {
       try {
         openaiFileId = await openaiService.uploadFile(
           file.buffer,
           decodedFilename  // Use the decoded filename here
         );
+        console.log(`OpenAI upload successful for file: ${decodedFilename}, OpenAI File ID: ${openaiFileId}`);
         break; // If upload succeeds, exit the loop
       } catch (uploadError) {
         retries++;

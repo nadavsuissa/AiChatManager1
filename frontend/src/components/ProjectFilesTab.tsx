@@ -169,6 +169,20 @@ const ProjectFilesTab: React.FC<ProjectFilesTabProps> = ({
   const uploadFile = async (file: File) => {
     if (!project.id) return;
     
+    // Validate file before processing
+    if (!file || file.size === 0) {
+      setError('הקובץ ריק או לא תקין. אנא בחר קובץ תקין.');
+      return;
+    }
+
+    // Validate file name
+    if (!file.name || file.name === 'unnamed') {
+      setError('שם הקובץ חסר או לא תקין. אנא בחר קובץ עם שם תקין.');
+      return;
+    }
+    
+    console.log(`Processing file upload: ${file.name}, Size: ${file.size} bytes, Type: ${file.type}`);
+    
     // Check file size before uploading (25MB limit)
     const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
     if (file.size > MAX_FILE_SIZE) {
@@ -203,7 +217,7 @@ const ProjectFilesTab: React.FC<ProjectFilesTabProps> = ({
       }
     } catch (err) {
       setError('אירעה שגיאה בהעלאת הקובץ');
-      console.error(err);
+      console.error('File upload error:', err);
     } finally {
       clearInterval(progressInterval);
       setUploading(false);
