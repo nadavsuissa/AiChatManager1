@@ -253,29 +253,69 @@ export const uploadProjectFile = async (
     }
     console.log('FormData content:', formDataDebug);
     
-    // IMPORTANT: Use a regular fetch call to ensure proper multipart/form-data handling
-    // instead of using the Axios instance which might be modifying the content type
-    const url = `/api/projects/${projectId}/files`;
-    console.log(`Sending direct fetch request to ${url}`);
+    // Try the direct fetch approach first - if that fails, fall back to Axios
+    try {
+      // Get the base URL and authorization token from the Axios instance
+      const baseURL = api.defaults.baseURL || '';
+      const authToken = api.defaults.headers.common['Authorization'] as string;
+      
+      // Construct the full URL (ensuring we don't have double slashes)
+      const fullUrl = `${window.location.origin}${baseURL}${baseURL.endsWith('/') ? '' : '/'}projects/${projectId}/files`;
+      console.log(`Sending direct fetch request to ${fullUrl}`);
 
-    const response = await fetch(url, {
-      method: 'POST',
-      body: formData,
-      headers: {
-        // Don't set Content-Type - browser will set it correctly with boundary
-        'Authorization': api.defaults.headers.common['Authorization'] as string
+      // Send with fetch API using proper credentials and headers
+      const response = await fetch(fullUrl, {
+        method: 'POST',
+        body: formData,
+        credentials: 'same-origin', // Include cookies
+        headers: {
+          // Don't set Content-Type - browser will set it with boundary for multipart/form-data
+          'Authorization': authToken || ''
+        }
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Server responded with ${response.status}`);
       }
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || `Server responded with ${response.status}`);
-    }
 
-    const responseData = await response.json();
-    console.log('Upload successful, response:', responseData);
-    
-    return { data: responseData };
+      const responseData = await response.json();
+      console.log('Upload successful, response:', responseData);
+      
+      return { data: responseData };
+    } catch (fetchError) {
+      // If fetch fails, log it and try with Axios as fallback
+      console.error('Fetch approach failed:', fetchError);
+      console.log('Falling back to Axios approach...');
+      
+      // Create a special Axios instance without the default Content-Type
+      const axiosWithoutContentType = axios.create({
+        baseURL: api.defaults.baseURL,
+        timeout: api.defaults.timeout,
+        headers: {
+          // Explicitly omit Content-Type to let browser set it for FormData
+          // But keep Authorization and other headers
+          'Authorization': api.defaults.headers.common['Authorization']
+        }
+      });
+      
+      // Make the request with Axios but without setting Content-Type
+      const response = await axiosWithoutContentType.post(
+        `/projects/${projectId}/files`,
+        formData,
+        {
+          // Additional config to ensure proper multipart/form-data handling
+          transformRequest: [(data) => data], // Prevent Axios from transforming FormData
+          onUploadProgress: (progressEvent) => {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
+            console.log(`Upload progress: ${percentCompleted}%`);
+          }
+        }
+      );
+      
+      console.log('Axios upload successful, response:', response.data);
+      return { data: response.data };
+    }
   } catch (error) {
     console.error('Error uploading file:', error);
     

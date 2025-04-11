@@ -279,36 +279,82 @@ const ProjectFilesTab: React.FC<ProjectFilesTabProps> = ({
     }, 500);
     
     try {
-      // Wrapping in a timeout to make sure the progress indicator has time to appear
+      // Check network connectivity first
+      try {
+        console.log('Testing network connectivity...');
+        const testResponse = await fetch(`${window.location.origin}/api/health-check`, { 
+          method: 'HEAD',
+          cache: 'no-store',
+          mode: 'no-cors'
+        });
+        console.log('Network appears to be connected');
+      } catch (networkError) {
+        console.warn('Network connectivity test failed:', networkError);
+        // Continue anyway, as the main request might still work
+      }
+      
+      // Wait a bit to ensure UI updates before attempting upload
       setTimeout(async () => {
         try {
           console.log(`Starting upload API call for ${file.name}`);
-          const response = await uploadProjectFile(project.id, file);
           
-          if (response.error) {
-            clearInterval(progressInterval);
-            setError(response.error);
-            console.error('Upload API returned error:', response.error);
-            setUploading(false);
-            setCurrentFile(null);
-          } else {
-            clearInterval(progressInterval);
-            setUploadProgress(100);
-            setSuccessMessage(`הקובץ ${file.name} הועלה בהצלחה`);
-            console.log('File upload completed successfully');
-            onProjectUpdated(); // Refresh project data to show the new file
+          // Create a readable clone of the file for logging purposes
+          const fileClone = {
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            lastModified: file.lastModified
+          };
+          console.log('File details for upload:', fileClone);
+          
+          // Attempt the upload, with comprehensive error handling
+          try {
+            const response = await uploadProjectFile(project.id, file);
             
-            // Reset state after completion animation
-            setTimeout(() => {
-              setUploadProgress(0);
+            if (response.error) {
+              clearInterval(progressInterval);
+              console.error('Upload API returned error:', response.error);
+              
+              // Handle common error cases with user-friendly messages
+              if (response.error.includes('network') || response.error.includes('Network')) {
+                setError('יש בעיית תקשורת עם השרת. אנא ודא שהינך מחובר לאינטרנט ונסה שוב.');
+              } else {
+                setError(response.error);
+              }
+              
               setUploading(false);
               setCurrentFile(null);
-            }, 1000);
+            } else {
+              clearInterval(progressInterval);
+              setUploadProgress(100);
+              setSuccessMessage(`הקובץ ${file.name} הועלה בהצלחה`);
+              console.log('File upload completed successfully:', response.data);
+              onProjectUpdated(); // Refresh project data to show the new file
+              
+              // Reset state after completion animation
+              setTimeout(() => {
+                setUploadProgress(0);
+                setUploading(false);
+                setCurrentFile(null);
+              }, 1000);
+            }
+          } catch (uploadError) {
+            console.error('Exception during upload call:', uploadError);
+            throw uploadError; // Re-throw to be caught by outer catch
           }
         } catch (innerError) {
           clearInterval(progressInterval);
           console.error('Error in upload process:', innerError);
-          setError('אירעה שגיאה בהעלאת הקובץ. אנא נסה שוב.');
+          
+          // Try to provide more specific error messages based on the error type
+          if (innerError instanceof TypeError && innerError.message.includes('NetworkError')) {
+            setError('חיבור לשרת נכשל. אנא ודא שהינך מחובר לאינטרנט ונסה שוב.');
+          } else if (innerError instanceof TypeError && innerError.message.includes('Failed to fetch')) {
+            setError('בקשת ההעלאה נכשלה. ייתכן שישנה בעיית תקשורת או שהשרת אינו זמין כרגע.');
+          } else {
+            setError('אירעה שגיאה בהעלאת הקובץ. אנא נסה שוב מאוחר יותר.');
+          }
+          
           setUploading(false);
           setCurrentFile(null);
           setUploadProgress(0);
@@ -316,11 +362,10 @@ const ProjectFilesTab: React.FC<ProjectFilesTabProps> = ({
       }, 500); // Small delay to allow UI to update first
     } catch (err) {
       clearInterval(progressInterval);
-      console.error('File upload error:', err);
+      console.error('Outer file upload error:', err);
       setError('אירעה שגיאה בהעלאת הקובץ. אנא נסה שוב.');
       setUploading(false);
       setCurrentFile(null);
-      // Reset progress after completion animation
       setTimeout(() => setUploadProgress(0), 1000);
     }
   };
