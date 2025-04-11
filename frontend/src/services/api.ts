@@ -231,7 +231,7 @@ export const uploadProjectFile = async (
 ): Promise<ApiResponse<{ file: { id: string, openaiFileId: string } }>> => {
   try {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', file, file.name);
     
     const response: AxiosResponse<{ file: { id: string, openaiFileId: string }, projectId: string }> = 
       await api.post(`/projects/${projectId}/files`, formData, {

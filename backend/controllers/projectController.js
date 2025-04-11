@@ -554,6 +554,9 @@ exports.uploadProjectFile = async (req, res) => {
     const { id } = req.params;
     const file = req.file;
     
+    // Log 1: Check filename immediately after multer processing
+    console.log(`[Upload Debug 1] Filename received by controller: ${file?.originalname}`);
+    
     console.log(`Uploading file to project ${id}: ${file?.originalname || 'unnamed'}, Size: ${file?.size || 0} bytes`);
     
     if (!file) {
@@ -590,10 +593,14 @@ exports.uploadProjectFile = async (req, res) => {
     
     while (retries < MAX_RETRIES) {
       try {
+        // Log 2: Check filename just before sending to OpenAI service
+        console.log(`[Upload Debug 2] Filename passed to openaiService.uploadFile: ${file.originalname}`);
         openaiFileId = await openaiService.uploadFile(
           file.buffer,
           file.originalname
         );
+        // Log 3: Check filename after successful OpenAI upload (if applicable, though unlikely to change here)
+        console.log(`[Upload Debug 3] Filename after openaiService.uploadFile call: ${file.originalname}`);
         break; // If upload succeeds, exit the loop
       } catch (uploadError) {
         retries++;
@@ -622,7 +629,7 @@ exports.uploadProjectFile = async (req, res) => {
     // Create file record
     const fileRecord = {
       id: uuidv4(),
-      name: file.originalname,
+      name: file.originalname, // Critical assignment
       type: file.mimetype,
       size: file.size,
       url: '', // Would normally store URL from Firebase Storage
@@ -631,6 +638,9 @@ exports.uploadProjectFile = async (req, res) => {
       uploadedAt: new Date(),
       attachedToAssistant: !!vectorStoreId
     };
+    
+    // Log 4: Check filename within the fileRecord object before saving
+    console.log(`[Upload Debug 4] Filename in fileRecord before Firestore save: ${fileRecord.name}`);
     
     // Update project with new file
     const files = [...(project.files || []), fileRecord];
