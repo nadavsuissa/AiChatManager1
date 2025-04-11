@@ -548,6 +548,21 @@ exports.sendProjectMessage = async (req, res) => {
 exports.uploadProjectFile = async (req, res) => {
   try {
     const { id } = req.params;
+    
+    // Detailed request inspection
+    console.log('Upload request headers:', req.headers);
+    console.log('Upload request content-type:', req.headers['content-type']);
+    console.log('Upload body fields:', Object.keys(req.body || {}));
+    console.log('Upload files:', req.files ? 'Multiple files present' : 'No req.files');
+    console.log('Upload file:', req.file ? 'Single file present' : 'No req.file');
+    
+    // More detailed logging of the form data received
+    if (req.headers['content-type']?.includes('multipart/form-data')) {
+      console.log('Request is multipart/form-data');
+    } else {
+      console.log('Request is NOT multipart/form-data, found:', req.headers['content-type']);
+    }
+    
     const file = req.file;
     
     // More robust file validation
@@ -555,6 +570,16 @@ exports.uploadProjectFile = async (req, res) => {
       console.error('No file received in request');
       return res.status(400).json({ error: 'No file uploaded. Please select a file to upload.' });
     }
+
+    // Log the Multer file object
+    console.log('Multer file object:', {
+      fieldname: file.fieldname,
+      originalname: file.originalname,
+      encoding: file.encoding,
+      mimetype: file.mimetype,
+      size: file.size,
+      buffer: file.buffer ? `Buffer present (${file.buffer.length} bytes)` : 'No buffer'
+    });
 
     if (!file.buffer || file.size === 0) {
       console.error(`Received empty file: ${file.originalname}, Size: ${file.size} bytes`);

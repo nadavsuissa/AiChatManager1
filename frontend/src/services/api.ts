@@ -236,18 +236,29 @@ export const uploadProjectFile = async (
       return { error: 'קובץ לא תקין או ריק. אנא נסה שוב עם קובץ אחר.' };
     }
 
-    // Log file details for debugging
+    // More detailed debug logging
     console.log(`Uploading file: ${file.name}, Type: ${file.type}, Size: ${file.size} bytes`);
+    console.log(`File last modified: ${new Date(file.lastModified).toISOString()}`);
     
+    // Create a new FormData object to ensure it's empty
     const formData = new FormData();
-    formData.append('file', file);
     
+    // Adding the file with 'file' as the field name to match what multer expects on the server
+    // Also logging to ensure it was added correctly
+    formData.append('file', file, file.name);
+    
+    // Debug: Verify FormData contains the file
+    let formDataDebug = '';
+    for (const [key, value] of (formData as any).entries()) {
+      formDataDebug += `${key}: ${value instanceof File ? value.name + ' (' + value.size + ' bytes)' : value}\n`;
+    }
+    console.log('FormData content:', formDataDebug);
+    
+    // Use specific content type to ensure the server receives it as multipart/form-data
     const response: AxiosResponse<{ file: { id: string, openaiFileId: string }, projectId: string }> = 
       await api.post(`/projects/${projectId}/files`, formData, {
+        // Don't set Content-Type manually - let the browser set it with the correct boundary
         headers: {
-          // Don't manually set Content-Type for FormData - browser will set it automatically
-          // with proper boundary parameters
-          // Instead log what's being sent
         },
         // Enable request body logging for debugging
         onUploadProgress: (progressEvent) => {
@@ -257,9 +268,21 @@ export const uploadProjectFile = async (
         timeout: 60000, // 60 seconds
       });
     
+    // Log successful response
+    console.log('Upload successful, response:', response.data);
     return { data: response.data };
   } catch (error) {
     console.error('Error uploading file:', error);
+    
+    // More detailed error logging
+    if (axios.isAxiosError(error) && error.response) {
+      console.error('Server responded with:', {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: error.response.data
+      });
+    }
+    
     const errorMessage = handleApiError(error, 'העלאת הקובץ נכשלה');
     return { error: errorMessage };
   }

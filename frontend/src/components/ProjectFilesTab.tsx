@@ -137,9 +137,42 @@ const ProjectFilesTab: React.FC<ProjectFilesTabProps> = ({
   // Handle file selection
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
-    if (files && files.length > 0) {
-      await uploadFile(files[0]);
+    
+    // Reset error state first
+    setError(null);
+    
+    // More detailed validation
+    if (!files || files.length === 0) {
+      console.error('No files selected');
+      setError('לא נבחר קובץ. אנא בחר קובץ להעלאה.');
+      return;
     }
+    
+    const selectedFile = files[0];
+    
+    // Enhanced file validation
+    if (!selectedFile) {
+      console.error('Selected file is undefined');
+      setError('הקובץ שנבחר אינו תקין.');
+      return;
+    }
+    
+    if (selectedFile.size === 0) {
+      console.error('Selected file has zero size');
+      setError('הקובץ שנבחר ריק (גודל 0).');
+      return;
+    }
+    
+    // Log detailed file information for debugging
+    console.log('File selected:', {
+      name: selectedFile.name,
+      type: selectedFile.type,
+      size: selectedFile.size,
+      lastModified: new Date(selectedFile.lastModified).toISOString()
+    });
+    
+    // Proceed with upload
+    await uploadFile(selectedFile);
   };
 
   // Handle drag events
@@ -160,9 +193,40 @@ const ProjectFilesTab: React.FC<ProjectFilesTabProps> = ({
     e.stopPropagation();
     setDragActive(false);
     
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      await uploadFile(e.dataTransfer.files[0]);
+    // Reset error state
+    setError(null);
+    
+    if (!e.dataTransfer.files || e.dataTransfer.files.length === 0) {
+      console.error('No files in drop event');
+      setError('לא זוהו קבצים בגרירה. אנא נסה שוב.');
+      return;
     }
+    
+    const droppedFile = e.dataTransfer.files[0];
+    
+    // Enhanced file validation
+    if (!droppedFile) {
+      console.error('Dropped file is undefined');
+      setError('הקובץ שנגרר אינו תקין.');
+      return;
+    }
+    
+    if (droppedFile.size === 0) {
+      console.error('Dropped file has zero size');
+      setError('הקובץ שנגרר ריק (גודל 0).');
+      return;
+    }
+    
+    // Log detailed file information for debugging
+    console.log('File dropped:', {
+      name: droppedFile.name,
+      type: droppedFile.type,
+      size: droppedFile.size,
+      lastModified: new Date(droppedFile.lastModified).toISOString()
+    });
+    
+    // Proceed with upload
+    await uploadFile(droppedFile);
   };
 
   // Handle file upload
@@ -195,6 +259,17 @@ const ProjectFilesTab: React.FC<ProjectFilesTabProps> = ({
     setUploadProgress(0);
     setError(null);
     
+    // Create a new FormData object specifically for this upload
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+    
+    // Verify FormData has the file
+    let formDataDebug = '';
+    for (const [key, value] of (formData as any).entries()) {
+      formDataDebug += `${key}: ${value instanceof File ? value.name + ' (' + value.size + ' bytes)' : value}\n`;
+    }
+    console.log('FormData prepared for upload:', formDataDebug);
+    
     // Simulate progress for better UX (since we don't have real progress events from the API)
     const progressInterval = setInterval(() => {
       setUploadProgress(prev => {
@@ -209,6 +284,7 @@ const ProjectFilesTab: React.FC<ProjectFilesTabProps> = ({
       
       if (response.error) {
         setError(response.error);
+        console.error('Upload API returned error:', response.error);
       } else {
         clearInterval(progressInterval);
         setUploadProgress(100);
@@ -216,8 +292,8 @@ const ProjectFilesTab: React.FC<ProjectFilesTabProps> = ({
         onProjectUpdated(); // Refresh project data to show the new file
       }
     } catch (err) {
-      setError('אירעה שגיאה בהעלאת הקובץ');
       console.error('File upload error:', err);
+      setError('אירעה שגיאה בהעלאת הקובץ. אנא נסה שוב.');
     } finally {
       clearInterval(progressInterval);
       setUploading(false);
