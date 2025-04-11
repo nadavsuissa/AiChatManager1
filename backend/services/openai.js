@@ -211,17 +211,15 @@ async function sendMessage(threadId, assistantId, message, fileIds = [], project
         if (msg.content[0]?.type === 'text') {
           const textContent = msg.content[0].text;
           
-          // Remove citation processing logic
-          // let processedText = textContent.value;
-          // const citations = [];
-          
-          // textContent.annotations.forEach((annotation, index) => { ... });
-          
-          // Add RTL embedding for assistant messages (likely Hebrew)
+          // Convert text content to fix Hebrew encoding
           let finalContent = textContent.value;
+          
+          // Remove all file citations of format 【0:filename.docx】 completely
+          finalContent = finalContent.replace(/【\d+:[^】]+】/g, '');
+          
           if (msg.role === 'assistant') {
             // ‫ = RTL embedding, ‬ = pop directional formatting
-            finalContent = `‫${textContent.value}‬`;
+            finalContent = `‫${finalContent}‬`;
             
             // Explicitly remove the unwanted citation pattern
             finalContent = finalContent.replace(/\(המידע מופיע במסמך "[^"]*"\)/g, '').trim();
@@ -290,14 +288,15 @@ async function getMessages(threadId) {
       if (msg.content[0]?.type === 'text') {
         const textContent = msg.content[0].text;
         
-        // Remove citation processing logic
-        // if (textContent.annotations && textContent.annotations.length > 0) { ... }
-        
-        // Add RTL embedding for assistant messages (likely Hebrew)
+        // Convert text content to fix Hebrew encoding
         let finalContent = textContent.value;
+        
+        // Remove all file citations of format 【0:filename.docx】 completely
+        finalContent = finalContent.replace(/【\d+:[^】]+】/g, '');
+        
         if (msg.role === 'assistant') {
           // ‫ = RTL embedding, ‬ = pop directional formatting
-          finalContent = `‫${textContent.value}‬`;
+          finalContent = `‫${finalContent}‬`;
           
           // Explicitly remove the unwanted citation pattern
           finalContent = finalContent.replace(/\(המידע מופיע במסמך "[^"]*"\)/g, '').trim();
@@ -577,7 +576,11 @@ async function runAssistantAndGetLastMessageContent(threadId, assistantId, promp
     }
 
     // 7. Return the raw text content
-    const rawContent = assistantMessage.content[0].text.value;
+    let rawContent = assistantMessage.content[0].text.value;
+    
+    // Remove all file citations of format 【0:filename.docx】 completely
+    rawContent = rawContent.replace(/【\d+:[^】]+】/g, '');
+    
     console.log(`Retrieved raw content from assistant message ${assistantMessage.id}`);
     return rawContent;
 
