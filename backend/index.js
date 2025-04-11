@@ -31,32 +31,9 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Enhanced request logging middleware
+// Request logging middleware (optional)
 app.use((req, res, next) => {
-  const timestamp = new Date().toISOString();
-  console.log(`${timestamp} ${req.method} ${req.url}`);
-  
-  // Log headers for all requests to help with debugging
-  if (req.method === 'POST' || req.method === 'PUT') {
-    console.log(`Request headers: ${JSON.stringify({
-      'content-type': req.headers['content-type'],
-      'content-length': req.headers['content-length'],
-      'user-agent': req.headers['user-agent']
-    })}`);
-  }
-  
-  // For non-multipart requests, we can log the body
-  if (
-    req.method === 'POST' && 
-    req.headers['content-type'] && 
-    !req.headers['content-type'].includes('multipart/form-data')
-  ) {
-    const bodySummary = typeof req.body === 'object' 
-      ? Object.keys(req.body).join(', ') 
-      : 'not an object';
-    console.log(`Request body keys: ${bodySummary}`);
-  }
-  
+  console.log(`${new Date().toISOString()} ${req.method} ${req.url}`);
   next();
 });
 

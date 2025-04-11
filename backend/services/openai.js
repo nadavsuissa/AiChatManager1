@@ -67,55 +67,32 @@ async function createThread() {
 /**
  * Uploads a file to OpenAI for use with assistants
  * @param {Buffer} fileBuffer - The file buffer to upload 
- * @param {string} fileName - The correctly decoded name of the file
+ * @param {string} fileName - Name of the file
  * @returns {Promise<string>} - The file ID
  */
 async function uploadFile(fileBuffer, fileName) {
   try {
-    // More strict validation of file buffer
-    if (!fileBuffer || !Buffer.isBuffer(fileBuffer) || fileBuffer.length === 0) {
-      throw new Error('Invalid or empty file buffer provided. Please ensure the file was properly selected and uploaded.');
+    // Ensure we have a valid file buffer
+    if (!fileBuffer || !Buffer.isBuffer(fileBuffer)) {
+      throw new Error('Invalid file buffer provided');
     }
     
-    // Ensure filename is a non-empty string
-    if (!fileName || typeof fileName !== 'string' || fileName.trim() === '' || fileName === 'unnamed') {
-      console.warn('Invalid, empty or default filename provided, using a generated one.');
-      // Generate a more descriptive filename with timestamp and random identifier
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const randomId = Math.random().toString(36).substring(2, 8);
-      fileName = `upload_${timestamp}_${randomId}.bin`;
-    }
-
-    console.log(`[uploadFile] Processing file "${fileName}" of size ${fileBuffer.length} bytes`);
+    // For Node.js, OpenAI SDK expects a buffer with file data property
+    // or a ReadStream from fs.createReadStream
     
-    // Check file size before attempting to upload
-    // OpenAI has a limit of ~25MB for files
-    const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
-    if (fileBuffer.length > MAX_FILE_SIZE) {
-      throw new Error(`File size exceeds OpenAI's limit of ${MAX_FILE_SIZE / (1024 * 1024)}MB`);
-    }
-
-    // Create a temporary file with a sanitized name that works on all filesystems
+    // Create a temporary file from the buffer
     const fs = require('fs');
     const path = require('path');
     const os = require('os');
-    const crypto = require('crypto');
+    const tempFilePath = path.join(os.tmpdir(), fileName);
     
-    // Generate a safe temporary filename with random hash
-    const tempId = crypto.randomBytes(16).toString('hex');
-    const ext = path.extname(fileName) || '.bin'; // Default to .bin if no extension
-    const tempFilePath = path.join(os.tmpdir(), `upload_${tempId}${ext}`);
-    
-    // Write the buffer to the temporary file
+    // Write the buffer to a temporary file
     fs.writeFileSync(tempFilePath, fileBuffer);
     
     // Create a read stream from the temporary file
     const fileStream = fs.createReadStream(tempFilePath);
     
-    console.log(`[uploadFile] Uploading stream to OpenAI (size: ${fileBuffer.length} bytes)`);
-    
     // Upload using the file stream
-    // Note: OpenAI will use the basename of the file path as the filename
     const file = await openai.files.create({
       file: fileStream,
       purpose: "assistants",
@@ -131,16 +108,11 @@ async function uploadFile(fileBuffer, fileName) {
     console.log(`Uploaded file "${fileName}" to OpenAI: ${file.id}`);
     return file.id;
   } catch (error) {
-    console.error(`Error uploading file "${fileName}" to OpenAI:`, error.message);
+    console.error('Error uploading file:', error.message);
     if (error.response) {
       console.error('OpenAI API Error:', error.response.data);
     }
-    // Add more specific error info if possible
-    let errorMessage = `Failed to upload file "${fileName}" to OpenAI`;
-    if (error.code) {
-      errorMessage += ` (Code: ${error.code})`;
-    }
-    throw new Error(`${errorMessage}: ${error.message}`);
+    throw new Error(`Failed to upload file to OpenAI: ${error.message}`);
   }
 }
 
@@ -239,26 +211,26 @@ async function sendMessage(threadId, assistantId, message, fileIds = [], project
         if (msg.content[0]?.type === 'text') {
           const textContent = msg.content[0].text;
           
-          // Start with the raw text value
+          // Remove citation processing logic
+          // let processedText = textContent.value;
+          // const citations = [];
+          
+          // textContent.annotations.forEach((annotation, index) => { ... });
+          
+          // Add RTL embedding for assistant messages (likely Hebrew)
           let finalContent = textContent.value;
-
-          // Remove the automatic 【...】 citations
-          // Regex: Matches 【 followed by any characters except 】, then 】
-          finalContent = finalContent.replace(/【[^】]*】/g, '').trim();
-
-          // Also remove the textual pattern from instructions, just in case
-          finalContent = finalContent.replace(/\\(המידע מופיע במסמך "[^"]*"\\)/g, '').trim();
-
-          // Add RTL embedding for assistant messages if it seems like Hebrew
-          // A simple check for Hebrew characters
-          if (/[\\u0590-\\u05FF]/.test(finalContent)) { 
-            finalContent = `‫${finalContent}‬`; // Add RTL embedding
+          if (msg.role === 'assistant') {
+            // ‫ = RTL embedding, ‬ = pop directional formatting
+            finalContent = `‫${textContent.value}‬`;
+            
+            // Explicitly remove the unwanted citation pattern
+            finalContent = finalContent.replace(/\(המידע מופיע במסמך "[^"]*"\)/g, '').trim();
           }
           
           return {
             id: msg.id,
-            content: finalContent, // Use the cleaned text
-            citations: [], // Always return empty citations array now
+            content: finalContent, // Use original text value
+            citations: [], // Return empty citations array
             createdAt: msg.created_at,
             role: msg.role
           };
@@ -312,35 +284,34 @@ async function getMessages(threadId) {
         id: msg.id,
         role: msg.role,
         createdAt: msg.created_at,
-        content: '', // Initialize content
-        citations: [] // Initialize citations
       };
       
       // Process content based on type
       if (msg.content[0]?.type === 'text') {
         const textContent = msg.content[0].text;
         
-        // Start with the raw text value
-        let finalContent = textContent.value;
-
-        // Remove the automatic 【...】 citations
-        finalContent = finalContent.replace(/【[^】]*】/g, '').trim();
-
-        // Also remove the textual pattern from instructions
-        finalContent = finalContent.replace(/\\(המידע מופיע במסמך "[^"]*"\\)/g, '').trim();
+        // Remove citation processing logic
+        // if (textContent.annotations && textContent.annotations.length > 0) { ... }
         
-        // Add RTL embedding for assistant messages if it seems like Hebrew
-        if (msg.role === 'assistant' && /[\\u0590-\\u05FF]/.test(finalContent)) {
-          finalContent = `‫${finalContent}‬`; // Add RTL embedding
+        // Add RTL embedding for assistant messages (likely Hebrew)
+        let finalContent = textContent.value;
+        if (msg.role === 'assistant') {
+          // ‫ = RTL embedding, ‬ = pop directional formatting
+          finalContent = `‫${textContent.value}‬`;
+          
+          // Explicitly remove the unwanted citation pattern
+          finalContent = finalContent.replace(/\(המידע מופיע במסמך "[^"]*"\)/g, '').trim();
         }
         
-        messageObj.content = finalContent; // Use the cleaned text
+        messageObj.content = finalContent; // Use original text value
+        messageObj.citations = []; // Return empty citations array
         
       } else {
         // Handle other content types if needed
         messageObj.content = msg.role === 'assistant' 
-          ? "‫[תוכן הודעה לא נתמך]‬" 
+          ? "\u202B[תוכן הודעה לא נתמך]\u202C" 
           : "[Unsupported content]";
+        messageObj.citations = [];
       }
       
       return messageObj;

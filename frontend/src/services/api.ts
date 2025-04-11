@@ -230,102 +230,22 @@ export const uploadProjectFile = async (
   file: File
 ): Promise<ApiResponse<{ file: { id: string, openaiFileId: string } }>> => {
   try {
-    // Validate file before upload
-    if (!file || file.size === 0) {
-      console.error('Invalid file: File is empty or undefined');
-      return { error: 'קובץ לא תקין או ריק. אנא נסה שוב עם קובץ אחר.' };
-    }
-
-    // More detailed debug logging
-    console.log(`Uploading file: ${file.name}, Type: ${file.type}, Size: ${file.size} bytes`);
-    console.log(`File last modified: ${new Date(file.lastModified).toISOString()}`);
-    
-    // Create a new FormData object to ensure it's empty
     const formData = new FormData();
+    formData.append('file', file);
     
-    // Adding the file with 'file' as the field name to match what multer expects on the server
-    formData.append('file', file, file.name);
-    
-    // Debug: Verify FormData contains the file
-    let formDataDebug = '';
-    for (const [key, value] of (formData as any).entries()) {
-      formDataDebug += `${key}: ${value instanceof File ? value.name + ' (' + value.size + ' bytes)' : value}\n`;
-    }
-    console.log('FormData content:', formDataDebug);
-    
-    // Try the direct fetch approach first - if that fails, fall back to Axios
-    try {
-      // Get the base URL and authorization token from the Axios instance
-      const baseURL = api.defaults.baseURL || '';
-      const authToken = api.defaults.headers.common['Authorization'] as string;
-      
-      // Construct the full URL (ensuring we don't have double slashes)
-      const fullUrl = `${window.location.origin}${baseURL}${baseURL.endsWith('/') ? '' : '/'}projects/${projectId}/files`;
-      console.log(`Sending direct fetch request to ${fullUrl}`);
-
-      // Send with fetch API using proper credentials and headers
-      const response = await fetch(fullUrl, {
-        method: 'POST',
-        body: formData,
-        credentials: 'same-origin', // Include cookies
+    const response: AxiosResponse<{ file: { id: string, openaiFileId: string }, projectId: string }> = 
+      await api.post(`/projects/${projectId}/files`, formData, {
         headers: {
-          // Don't set Content-Type - browser will set it with boundary for multipart/form-data
-          'Authorization': authToken || ''
-        }
+          'Content-Type': 'multipart/form-data',
+        },
+        // Increase timeout for file uploads
+        timeout: 60000, // 60 seconds
       });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Server responded with ${response.status}`);
-      }
-
-      const responseData = await response.json();
-      console.log('Upload successful, response:', responseData);
-      
-      return { data: responseData };
-    } catch (fetchError) {
-      // If fetch fails, log it and try with Axios as fallback
-      console.error('Fetch approach failed:', fetchError);
-      console.log('Falling back to Axios approach...');
-      
-      // Create a special Axios instance without the default Content-Type
-      const axiosWithoutContentType = axios.create({
-        baseURL: api.defaults.baseURL,
-        timeout: api.defaults.timeout,
-        headers: {
-          // Explicitly omit Content-Type to let browser set it for FormData
-          // But keep Authorization and other headers
-          'Authorization': api.defaults.headers.common['Authorization']
-        }
-      });
-      
-      // Make the request with Axios but without setting Content-Type
-      const response = await axiosWithoutContentType.post(
-        `/projects/${projectId}/files`,
-        formData,
-        {
-          // Additional config to ensure proper multipart/form-data handling
-          transformRequest: [(data) => data], // Prevent Axios from transforming FormData
-          onUploadProgress: (progressEvent) => {
-            const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
-            console.log(`Upload progress: ${percentCompleted}%`);
-          }
-        }
-      );
-      
-      console.log('Axios upload successful, response:', response.data);
-      return { data: response.data };
-    }
+    
+    return { data: response.data };
   } catch (error) {
     console.error('Error uploading file:', error);
-    
-    let errorMessage = '';
-    if (error instanceof Error) {
-      errorMessage = error.message;
-    } else {
-      errorMessage = 'Unknown error during file upload';
-    }
-    
+    const errorMessage = handleApiError(error, 'העלאת הקובץ נכשלה');
     return { error: errorMessage };
   }
 };

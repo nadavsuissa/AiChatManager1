@@ -131,58 +131,15 @@ const ProjectFilesTab: React.FC<ProjectFilesTabProps> = ({
 
   // Handle file browse click
   const handleBrowseClick = () => {
-    // Reset any previous errors before opening file picker
-    setError(null);
-    
-    // Make sure the file input has the correct accept attribute
-    if (fileInputRef.current) {
-      fileInputRef.current.accept = ".pdf,.docx,.doc,.txt,.md,.jpg,.jpeg,.png,.json,.csv,.xlsx,.xls";
-      fileInputRef.current.click();
-    } else {
-      console.error("File input reference is null");
-      setError("אירעה שגיאה בפתיחת חלון בחירת קבצים");
-    }
+    fileInputRef.current?.click();
   };
 
   // Handle file selection
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
-    
-    // Reset error state first
-    setError(null);
-    
-    // More detailed validation
-    if (!files || files.length === 0) {
-      console.error('No files selected');
-      setError('לא נבחר קובץ. אנא בחר קובץ להעלאה.');
-      return;
+    if (files && files.length > 0) {
+      await uploadFile(files[0]);
     }
-    
-    const selectedFile = files[0];
-    
-    // Enhanced file validation
-    if (!selectedFile) {
-      console.error('Selected file is undefined');
-      setError('הקובץ שנבחר אינו תקין.');
-      return;
-    }
-    
-    if (selectedFile.size === 0) {
-      console.error('Selected file has zero size');
-      setError('הקובץ שנבחר ריק (גודל 0).');
-      return;
-    }
-    
-    // Log detailed file information for debugging
-    console.log('File selected:', {
-      name: selectedFile.name,
-      type: selectedFile.type,
-      size: selectedFile.size,
-      lastModified: new Date(selectedFile.lastModified).toISOString()
-    });
-    
-    // Proceed with upload
-    await uploadFile(selectedFile);
   };
 
   // Handle drag events
@@ -203,59 +160,14 @@ const ProjectFilesTab: React.FC<ProjectFilesTabProps> = ({
     e.stopPropagation();
     setDragActive(false);
     
-    // Reset error state
-    setError(null);
-    
-    if (!e.dataTransfer.files || e.dataTransfer.files.length === 0) {
-      console.error('No files in drop event');
-      setError('לא זוהו קבצים בגרירה. אנא נסה שוב.');
-      return;
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      await uploadFile(e.dataTransfer.files[0]);
     }
-    
-    const droppedFile = e.dataTransfer.files[0];
-    
-    // Enhanced file validation
-    if (!droppedFile) {
-      console.error('Dropped file is undefined');
-      setError('הקובץ שנגרר אינו תקין.');
-      return;
-    }
-    
-    if (droppedFile.size === 0) {
-      console.error('Dropped file has zero size');
-      setError('הקובץ שנגרר ריק (גודל 0).');
-      return;
-    }
-    
-    // Log detailed file information for debugging
-    console.log('File dropped:', {
-      name: droppedFile.name,
-      type: droppedFile.type,
-      size: droppedFile.size,
-      lastModified: new Date(droppedFile.lastModified).toISOString()
-    });
-    
-    // Proceed with upload
-    await uploadFile(droppedFile);
   };
 
   // Handle file upload
   const uploadFile = async (file: File) => {
     if (!project.id) return;
-    
-    // Validate file before processing
-    if (!file || file.size === 0) {
-      setError('הקובץ ריק או לא תקין. אנא בחר קובץ תקין.');
-      return;
-    }
-
-    // Validate file name
-    if (!file.name || file.name === 'unnamed') {
-      setError('שם הקובץ חסר או לא תקין. אנא בחר קובץ עם שם תקין.');
-      return;
-    }
-    
-    console.log(`Processing file upload: ${file.name}, Size: ${file.size} bytes, Type: ${file.type}`);
     
     // Check file size before uploading (25MB limit)
     const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
@@ -268,7 +180,7 @@ const ProjectFilesTab: React.FC<ProjectFilesTabProps> = ({
     setUploading(true);
     setUploadProgress(0);
     setError(null);
-
+    
     // Simulate progress for better UX (since we don't have real progress events from the API)
     const progressInterval = setInterval(() => {
       setUploadProgress(prev => {
@@ -279,93 +191,24 @@ const ProjectFilesTab: React.FC<ProjectFilesTabProps> = ({
     }, 500);
     
     try {
-      // Check network connectivity first
-      try {
-        console.log('Testing network connectivity...');
-        const testResponse = await fetch(`${window.location.origin}/api/health-check`, { 
-          method: 'HEAD',
-          cache: 'no-store',
-          mode: 'no-cors'
-        });
-        console.log('Network appears to be connected');
-      } catch (networkError) {
-        console.warn('Network connectivity test failed:', networkError);
-        // Continue anyway, as the main request might still work
-      }
+      const response = await uploadProjectFile(project.id, file);
       
-      // Wait a bit to ensure UI updates before attempting upload
-      setTimeout(async () => {
-        try {
-          console.log(`Starting upload API call for ${file.name}`);
-          
-          // Create a readable clone of the file for logging purposes
-          const fileClone = {
-            name: file.name,
-            type: file.type,
-            size: file.size,
-            lastModified: file.lastModified
-          };
-          console.log('File details for upload:', fileClone);
-          
-          // Attempt the upload, with comprehensive error handling
-          try {
-            const response = await uploadProjectFile(project.id, file);
-            
-            if (response.error) {
-              clearInterval(progressInterval);
-              console.error('Upload API returned error:', response.error);
-              
-              // Handle common error cases with user-friendly messages
-              if (response.error.includes('network') || response.error.includes('Network')) {
-                setError('יש בעיית תקשורת עם השרת. אנא ודא שהינך מחובר לאינטרנט ונסה שוב.');
-              } else {
-                setError(response.error);
-              }
-              
-              setUploading(false);
-              setCurrentFile(null);
-            } else {
-              clearInterval(progressInterval);
-              setUploadProgress(100);
-              setSuccessMessage(`הקובץ ${file.name} הועלה בהצלחה`);
-              console.log('File upload completed successfully:', response.data);
-              onProjectUpdated(); // Refresh project data to show the new file
-              
-              // Reset state after completion animation
-              setTimeout(() => {
-                setUploadProgress(0);
-                setUploading(false);
-                setCurrentFile(null);
-              }, 1000);
-            }
-          } catch (uploadError) {
-            console.error('Exception during upload call:', uploadError);
-            throw uploadError; // Re-throw to be caught by outer catch
-          }
-        } catch (innerError) {
-          clearInterval(progressInterval);
-          console.error('Error in upload process:', innerError);
-          
-          // Try to provide more specific error messages based on the error type
-          if (innerError instanceof TypeError && innerError.message.includes('NetworkError')) {
-            setError('חיבור לשרת נכשל. אנא ודא שהינך מחובר לאינטרנט ונסה שוב.');
-          } else if (innerError instanceof TypeError && innerError.message.includes('Failed to fetch')) {
-            setError('בקשת ההעלאה נכשלה. ייתכן שישנה בעיית תקשורת או שהשרת אינו זמין כרגע.');
-          } else {
-            setError('אירעה שגיאה בהעלאת הקובץ. אנא נסה שוב מאוחר יותר.');
-          }
-          
-          setUploading(false);
-          setCurrentFile(null);
-          setUploadProgress(0);
-        }
-      }, 500); // Small delay to allow UI to update first
+      if (response.error) {
+        setError(response.error);
+      } else {
+        clearInterval(progressInterval);
+        setUploadProgress(100);
+        setSuccessMessage(`הקובץ ${file.name} הועלה בהצלחה`);
+        onProjectUpdated(); // Refresh project data to show the new file
+      }
     } catch (err) {
+      setError('אירעה שגיאה בהעלאת הקובץ');
+      console.error(err);
+    } finally {
       clearInterval(progressInterval);
-      console.error('Outer file upload error:', err);
-      setError('אירעה שגיאה בהעלאת הקובץ. אנא נסה שוב.');
       setUploading(false);
       setCurrentFile(null);
+      // Reset progress after completion animation
       setTimeout(() => setUploadProgress(0), 1000);
     }
   };

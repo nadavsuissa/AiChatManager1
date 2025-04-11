@@ -548,54 +548,13 @@ exports.sendProjectMessage = async (req, res) => {
 exports.uploadProjectFile = async (req, res) => {
   try {
     const { id } = req.params;
-    
-    // Detailed request inspection
-    console.log('Upload request headers:', req.headers);
-    console.log('Upload request content-type:', req.headers['content-type']);
-    console.log('Upload body fields:', Object.keys(req.body || {}));
-    console.log('Upload files:', req.files ? 'Multiple files present' : 'No req.files');
-    console.log('Upload file:', req.file ? 'Single file present' : 'No req.file');
-    
-    // More detailed logging of the form data received
-    if (req.headers['content-type']?.includes('multipart/form-data')) {
-      console.log('Request is multipart/form-data');
-    } else {
-      console.log('Request is NOT multipart/form-data, found:', req.headers['content-type']);
-    }
-    
     const file = req.file;
     
-    // More robust file validation
+    console.log(`Uploading file to project ${id}: ${file?.originalname || 'unnamed'}, Size: ${file?.size || 0} bytes`);
+    
     if (!file) {
-      console.error('No file received in request');
-      return res.status(400).json({ error: 'No file uploaded. Please select a file to upload.' });
+      return res.status(400).json({ error: 'No file uploaded' });
     }
-
-    // Log the Multer file object
-    console.log('Multer file object:', {
-      fieldname: file.fieldname,
-      originalname: file.originalname,
-      encoding: file.encoding,
-      mimetype: file.mimetype,
-      size: file.size,
-      buffer: file.buffer ? `Buffer present (${file.buffer.length} bytes)` : 'No buffer'
-    });
-
-    if (!file.buffer || file.size === 0) {
-      console.error(`Received empty file: ${file.originalname}, Size: ${file.size} bytes`);
-      return res.status(400).json({ error: 'Empty file received. Please ensure the file has content.' });
-    }
-    
-    // Get the file extension for validation
-    const originalExt = file.originalname.split('.').pop()?.toLowerCase() || '';
-    if (!originalExt) {
-      console.warn('File has no extension, might be problematic for OpenAI processing');
-    }
-    
-    // Fix for Hebrew filename encoding
-    const decodedFilename = decodeFileName(file.originalname || 'unnamed');
-    
-    console.log(`Uploading file to project ${id}: ${decodedFilename}, Size: ${file.size} bytes, Type: ${file.mimetype}`);
     
     // Check file size limits
     const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB for safety (OpenAI limit is higher but we're being cautious)
@@ -625,16 +584,12 @@ exports.uploadProjectFile = async (req, res) => {
     let retries = 0;
     const MAX_RETRIES = 3;
     
-    // Add additional logging for debugging
-    console.log(`Starting upload to OpenAI for file: ${decodedFilename}, Size: ${file.size} bytes`);
-    
     while (retries < MAX_RETRIES) {
       try {
         openaiFileId = await openaiService.uploadFile(
           file.buffer,
-          decodedFilename  // Use the decoded filename here
+          file.originalname
         );
-        console.log(`OpenAI upload successful for file: ${decodedFilename}, OpenAI File ID: ${openaiFileId}`);
         break; // If upload succeeds, exit the loop
       } catch (uploadError) {
         retries++;
@@ -663,7 +618,7 @@ exports.uploadProjectFile = async (req, res) => {
     // Create file record
     const fileRecord = {
       id: uuidv4(),
-      name: decodedFilename,  // Use the decoded filename here
+      name: file.originalname,
       type: file.mimetype,
       size: file.size,
       url: '', // Would normally store URL from Firebase Storage
@@ -699,81 +654,6 @@ exports.uploadProjectFile = async (req, res) => {
     res.status(500).json({ error: error.message || 'Failed to upload file' });
   }
 };
-
-/**
- * Helper function to decode filenames potentially mis-encoded by the browser/server.
- * Prioritizes standard URI decoding and then attempts to correct specific mojibake patterns.
- * @param {string} filename - The potentially encoded filename from multer's req.file.originalname
- * @returns {string} - The properly decoded filename (hopefully UTF-8)
- */
-function decodeFileName(filename) {
-  if (!filename || typeof filename !== 'string') {
-    return filename || '';
-  }
-  console.log(`[decodeFileName] Original filename received: "${filename}"`);
-
-  let decoded = filename;
-
-  try {
-    // Step 1: Try standard URI decoding first.
-    // This handles UTF-8 characters percent-encoded by the browser (filename*).
-    let uriDecoded = filename;
-    try {
-       // Use a loop to handle potentially double-encoded scenarios, though unlikely needed
-       let tempDecoded = filename;
-       let maxDecodes = 3; // Prevent infinite loops
-       while (maxDecodes > 0 && tempDecoded.includes('%')) {
-         tempDecoded = decodeURIComponent(tempDecoded);
-         maxDecodes--;
-       }
-       uriDecoded = tempDecoded;
-       console.log(`[decodeFileName] After decodeURIComponent: "${uriDecoded}"`);
-    } catch (uriError) {
-       console.warn(`[decodeFileName] decodeURIComponent failed for "${filename}":`, uriError.message);
-       // If URI decoding fails, proceed with the original filename for mojibake check
-       uriDecoded = filename; 
-    }
-
-
-    // Step 2: Check if the URI-decoded result STILL looks like mojibake (UTF-8 misinterpreted as Latin1).
-    // Check for high-bit characters AND the '×' character as strong indicators.
-    const hasMojibakePattern = /[\\u0080-\\u00FF]/.test(uriDecoded) && uriDecoded.includes('×');
-
-    if (hasMojibakePattern) {
-      console.warn(`[decodeFileName] Mojibake pattern detected *after* URI decoding: "${uriDecoded}". Attempting Latin1 correction.`);
-      // If it still looks wrong, *now* apply the Latin1 -> UTF-8 buffer conversion.
-      try {
-        const buffer = Buffer.from(uriDecoded, 'latin1');
-        const corrected = buffer.toString('utf8');
-        console.log(`[decodeFileName] After Latin1 correction: "${corrected}"`);
-
-        // Basic sanity check: Does the corrected string contain likely Hebrew characters?
-        // This is imperfect but helps avoid returning garbage if the correction was wrong.
-        if (/[\\u0590-\\u05FF]/.test(corrected) || !/[\\uFFFD]/.test(corrected)) { // Check for Hebrew or absence of replacement char
-          decoded = corrected;
-        } else {
-          console.warn(`[decodeFileName] Latin1 correction resulted in suspicious string: "${corrected}". Using URI decoded version as fallback.`);
-          decoded = uriDecoded; // Stick with the URI decoded version if correction looks bad
-        }
-      } catch (bufferError) {
-         console.error(`[decodeFileName] Error during Buffer conversion for "${uriDecoded}":`, bufferError);
-         decoded = uriDecoded; // Fallback to URI decoded version on buffer error
-      }
-    } else {
-      // If no mojibake after URI decoding, assume it's correct.
-      decoded = uriDecoded;
-    }
-
-  } catch (error) {
-    // Catch any unexpected errors during the process
-    console.error(`[decodeFileName] Unexpected error during decoding process for "${filename}":`, error);
-    // Fallback to the original filename in case of unexpected errors
-    decoded = filename;
-  }
-
-  console.log(`[decodeFileName] Final decoded filename: "${decoded}"`);
-  return decoded;
-}
 
 /**
  * Get files attached to a project's assistant
