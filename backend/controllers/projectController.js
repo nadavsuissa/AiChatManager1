@@ -146,6 +146,8 @@ exports.getAllProjects = async (req, res) => {
     }
     
     console.log(`Found ${filteredProjects.length} projects`);
+    // Ensure correct UTF-8 encoding for JSON response
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.status(200).json(filteredProjects);
   } catch (error) {
     console.error('Error getting all projects:', error);
@@ -187,6 +189,8 @@ exports.getProject = async (req, res) => {
       return res.status(403).json({ error: 'You do not have permission to access this project' });
     }
     
+    // Ensure correct UTF-8 encoding for JSON response
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.status(200).json({
       id: projectDoc.id,
       ...projectData
