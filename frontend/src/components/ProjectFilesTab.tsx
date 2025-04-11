@@ -131,7 +131,17 @@ const ProjectFilesTab: React.FC<ProjectFilesTabProps> = ({
 
   // Handle file browse click
   const handleBrowseClick = () => {
-    fileInputRef.current?.click();
+    // Reset any previous errors before opening file picker
+    setError(null);
+    
+    // Make sure the file input has the correct accept attribute
+    if (fileInputRef.current) {
+      fileInputRef.current.accept = ".pdf,.docx,.doc,.txt,.md,.jpg,.jpeg,.png,.json,.csv,.xlsx,.xls";
+      fileInputRef.current.click();
+    } else {
+      console.error("File input reference is null");
+      setError("אירעה שגיאה בפתיחת חלון בחירת קבצים");
+    }
   };
 
   // Handle file selection
@@ -258,18 +268,7 @@ const ProjectFilesTab: React.FC<ProjectFilesTabProps> = ({
     setUploading(true);
     setUploadProgress(0);
     setError(null);
-    
-    // Create a new FormData object specifically for this upload
-    const formData = new FormData();
-    formData.append('file', file, file.name);
-    
-    // Verify FormData has the file
-    let formDataDebug = '';
-    for (const [key, value] of (formData as any).entries()) {
-      formDataDebug += `${key}: ${value instanceof File ? value.name + ' (' + value.size + ' bytes)' : value}\n`;
-    }
-    console.log('FormData prepared for upload:', formDataDebug);
-    
+
     // Simulate progress for better UX (since we don't have real progress events from the API)
     const progressInterval = setInterval(() => {
       setUploadProgress(prev => {
@@ -280,22 +279,45 @@ const ProjectFilesTab: React.FC<ProjectFilesTabProps> = ({
     }, 500);
     
     try {
-      const response = await uploadProjectFile(project.id, file);
-      
-      if (response.error) {
-        setError(response.error);
-        console.error('Upload API returned error:', response.error);
-      } else {
-        clearInterval(progressInterval);
-        setUploadProgress(100);
-        setSuccessMessage(`הקובץ ${file.name} הועלה בהצלחה`);
-        onProjectUpdated(); // Refresh project data to show the new file
-      }
+      // Wrapping in a timeout to make sure the progress indicator has time to appear
+      setTimeout(async () => {
+        try {
+          console.log(`Starting upload API call for ${file.name}`);
+          const response = await uploadProjectFile(project.id, file);
+          
+          if (response.error) {
+            clearInterval(progressInterval);
+            setError(response.error);
+            console.error('Upload API returned error:', response.error);
+            setUploading(false);
+            setCurrentFile(null);
+          } else {
+            clearInterval(progressInterval);
+            setUploadProgress(100);
+            setSuccessMessage(`הקובץ ${file.name} הועלה בהצלחה`);
+            console.log('File upload completed successfully');
+            onProjectUpdated(); // Refresh project data to show the new file
+            
+            // Reset state after completion animation
+            setTimeout(() => {
+              setUploadProgress(0);
+              setUploading(false);
+              setCurrentFile(null);
+            }, 1000);
+          }
+        } catch (innerError) {
+          clearInterval(progressInterval);
+          console.error('Error in upload process:', innerError);
+          setError('אירעה שגיאה בהעלאת הקובץ. אנא נסה שוב.');
+          setUploading(false);
+          setCurrentFile(null);
+          setUploadProgress(0);
+        }
+      }, 500); // Small delay to allow UI to update first
     } catch (err) {
+      clearInterval(progressInterval);
       console.error('File upload error:', err);
       setError('אירעה שגיאה בהעלאת הקובץ. אנא נסה שוב.');
-    } finally {
-      clearInterval(progressInterval);
       setUploading(false);
       setCurrentFile(null);
       // Reset progress after completion animation

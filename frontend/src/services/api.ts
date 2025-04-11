@@ -244,7 +244,6 @@ export const uploadProjectFile = async (
     const formData = new FormData();
     
     // Adding the file with 'file' as the field name to match what multer expects on the server
-    // Also logging to ensure it was added correctly
     formData.append('file', file, file.name);
     
     // Debug: Verify FormData contains the file
@@ -254,36 +253,39 @@ export const uploadProjectFile = async (
     }
     console.log('FormData content:', formDataDebug);
     
-    // Use specific content type to ensure the server receives it as multipart/form-data
-    const response: AxiosResponse<{ file: { id: string, openaiFileId: string }, projectId: string }> = 
-      await api.post(`/projects/${projectId}/files`, formData, {
-        // Don't set Content-Type manually - let the browser set it with the correct boundary
-        headers: {
-        },
-        // Enable request body logging for debugging
-        onUploadProgress: (progressEvent) => {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
-          console.log(`Upload progress: ${percentCompleted}%`);
-        },
-        timeout: 60000, // 60 seconds
-      });
+    // IMPORTANT: Use a regular fetch call to ensure proper multipart/form-data handling
+    // instead of using the Axios instance which might be modifying the content type
+    const url = `/api/projects/${projectId}/files`;
+    console.log(`Sending direct fetch request to ${url}`);
+
+    const response = await fetch(url, {
+      method: 'POST',
+      body: formData,
+      headers: {
+        // Don't set Content-Type - browser will set it correctly with boundary
+        'Authorization': api.defaults.headers.common['Authorization'] as string
+      }
+    });
     
-    // Log successful response
-    console.log('Upload successful, response:', response.data);
-    return { data: response.data };
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `Server responded with ${response.status}`);
+    }
+
+    const responseData = await response.json();
+    console.log('Upload successful, response:', responseData);
+    
+    return { data: responseData };
   } catch (error) {
     console.error('Error uploading file:', error);
     
-    // More detailed error logging
-    if (axios.isAxiosError(error) && error.response) {
-      console.error('Server responded with:', {
-        status: error.response.status,
-        statusText: error.response.statusText,
-        data: error.response.data
-      });
+    let errorMessage = '';
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else {
+      errorMessage = 'Unknown error during file upload';
     }
     
-    const errorMessage = handleApiError(error, 'העלאת הקובץ נכשלה');
     return { error: errorMessage };
   }
 };
